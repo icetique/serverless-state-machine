@@ -1,0 +1,25 @@
+{
+    "Records": [
+        {
+            "messageId": "msg_evt_1",
+            "receiptHandle": "AQEBmanual",
+            "body": "{\"id\":\"evt_1\",\"source\":\"payments-example.agreements\",\"detail-type\":\"AgreementFunded\",\"detail\":{\"agreementId\":\"agr_123\",\"merchantId\":\"merchant_1\",\"partnerId\":\"partner_2\",\"amount\":1000,\"previousStatus\":\"APPROVED\",\"newStatus\":\"FUNDED\"}}",
+            "attributes": {
+                "ApproximateReceiveCount": "1",
+                "SentTimestamp": "1710000000000",
+                "SenderId": "settlement-demo",
+                "ApproximateFirstReceiveTimestamp": "1710000000000"
+            },
+            "messageAttributes": {
+                "X-Simulate-Post-Commit-Crash": {
+                    "stringValue": "1",
+                    "dataType": "String"
+                }
+            },
+            "md5OfBody": "manual",
+            "eventSource": "aws:sqs",
+            "eventSourceARN": "arn:aws:sqs:us-east-1:123456789012:settlement-queue",
+            "awsRegion": "us-east-1"
+        }
+    ]
+}

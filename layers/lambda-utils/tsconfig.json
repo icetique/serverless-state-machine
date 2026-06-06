@@ -1,0 +1,15 @@
+{
+    "compilerOptions": {
+        "target": "es2020",
+        "module": "commonjs",
+        "outDir": "nodejs/node_modules/@payments-example/lambda-utils",
+        "rootDir": "src",
+        "strict": true,
+        "esModuleInterop": true,
+        "declaration": true,
+        "sourceMap": true,
+        "skipLibCheck": true,
+        "types": ["node"]
+    },
+    "include": ["src/**/*.ts"]
+}

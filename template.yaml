@@ -1,0 +1,463 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+    serverless-state-machine
+
+    Serverless agreement workflow with JWT auth, outbox delivery, and async settlement processing
+
+Parameters:
+    DatabaseUrl:
+        Type: String
+        Default: ''
+    EventPublisherMode:
+        Type: String
+        Default: local
+    EventBusName:
+        Type: String
+        Default: default
+    SupabaseIssuer:
+        Type: String
+        Default: https://your-project-ref.supabase.co/auth/v1
+    SupabaseAudience:
+        Type: String
+        Default: authenticated
+    FrontendOrigin:
+        Type: String
+        Default: http://localhost:5173
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+    Function:
+        Timeout: 10
+
+Resources:
+    SharedLayer:
+        Type: AWS::Serverless::LayerVersion
+        Properties:
+            LayerName: payments-example-lambda-utils
+            Description: Shared auth, HTTP utilities, and error helpers for API Lambdas
+            ContentUri: layers/lambda-utils/
+            CompatibleRuntimes:
+                - nodejs24.x
+    PaymentsHttpApi:
+        Type: AWS::Serverless::HttpApi
+        Properties:
+            StageName: Prod
+            CorsConfiguration:
+                AllowOrigins:
+                    - !Ref FrontendOrigin
+                AllowHeaders:
+                    - authorization
+                    - content-type
+                    - idempotency-key
+                    - x-debug-simulate-post-commit-crash
+                AllowMethods:
+                    - GET
+                    - POST
+                    - OPTIONS
+            Auth:
+                DefaultAuthorizer: SupabaseJwtAuthorizer
+                Authorizers:
+                    SupabaseJwtAuthorizer:
+                        IdentitySource: $request.header.Authorization
+                        JwtConfiguration:
+                            issuer: !Ref SupabaseIssuer
+                            audience:
+                                - !Ref SupabaseAudience
+    CreateAgreementFunction:
+        Type: AWS::Serverless::Function
+        Properties:
+            CodeUri: create-agreement/
+            Handler: app.lambdaHandler
+            Runtime: nodejs24.x
+            Architectures:
+                - x86_64
+            Layers:
+                - !Ref SharedLayer
+            Environment:
+                Variables:
+                    DATABASE_URL: !Ref DatabaseUrl
+                    ENABLE_MANUAL_SETTLEMENT_TRIGGER: 'false'
+            Events:
+                CreateAgreement:
+                    Type: HttpApi
+                    Properties:
+                        ApiId: !Ref PaymentsHttpApi
+                        Path: /agreements
+                        Method: post
+        Metadata:
+            BuildMethod: esbuild
+            BuildProperties:
+                Minify: true
+                Target: 'es2020'
+                Sourcemap: true
+                External:
+                    - '@payments-example/lambda-utils'
+                EntryPoints:
+                    - app.ts
+    DebugEventsFunction:
+        Type: AWS::Serverless::Function
+        Properties:
+            CodeUri: debug-events/
+            Handler: app.lambdaHandler
+            Runtime: nodejs24.x
+            Architectures:
+                - x86_64
+            Layers:
+                - !Ref SharedLayer
+            Environment:
+                Variables:
+                    DATABASE_URL: !Ref DatabaseUrl
+            Events:
+                DebugEvents:
+                    Type: HttpApi
+                    Properties:
+                        ApiId: !Ref PaymentsHttpApi
+                        Path: /debug/events
+                        Method: get
+        Metadata:
+            BuildMethod: esbuild
+            BuildProperties:
+                Minify: true
+                Target: 'es2020'
+                Sourcemap: true
+                External:
+                    - '@payments-example/lambda-utils'
+                EntryPoints:
+                    - app.ts
+    ListAgreementsFunction:
+        Type: AWS::Serverless::Function
+        Properties:
+            CodeUri: list-agreements/
+            Handler: app.lambdaHandler
+            Runtime: nodejs24.x
+            Architectures:
+                - x86_64
+            Layers:
+                - !Ref SharedLayer
+            Environment:
+                Variables:
+                    DATABASE_URL: !Ref DatabaseUrl
+            Events:
+                ListAgreements:
+                    Type: HttpApi
+                    Properties:
+                        ApiId: !Ref PaymentsHttpApi
+                        Path: /agreements
+                        Method: get
+        Metadata:
+            BuildMethod: esbuild
+            BuildProperties:
+                Minify: true
+                Target: 'es2020'
+                Sourcemap: true
+                External:
+                    - '@payments-example/lambda-utils'
+                EntryPoints:
+                    - app.ts
+    ListLedgerFunction:
+        Type: AWS::Serverless::Function
+        Properties:
+            CodeUri: list-ledger/
+            Handler: app.lambdaHandler
+            Runtime: nodejs24.x
+            Architectures:
+                - x86_64
+            Layers:
+                - !Ref SharedLayer
+            Environment:
+                Variables:
+                    DATABASE_URL: !Ref DatabaseUrl
+            Events:
+                ListLedger:
+                    Type: HttpApi
+                    Properties:
+                        ApiId: !Ref PaymentsHttpApi
+                        Path: /ledger
+                        Method: get
+        Metadata:
+            BuildMethod: esbuild
+            BuildProperties:
+                Minify: true
+                Target: 'es2020'
+                Sourcemap: true
+                External:
+                    - '@payments-example/lambda-utils'
+                EntryPoints:
+                    - app.ts
+    ApproveAgreementFunction:
+        Type: AWS::Serverless::Function
+        Properties:
+            CodeUri: transition-agreement/
+            Handler: app.lambdaHandler
+            Runtime: nodejs24.x
+            Architectures:
+                - x86_64
+            Layers:
+                - !Ref SharedLayer
+            Environment:
+                Variables:
+                    DATABASE_URL: !Ref DatabaseUrl
+                    ENABLE_MANUAL_SETTLEMENT_TRIGGER: 'false'
+                    TRANSITION_EVENT_TYPE: AgreementApproved
+                    EXPECTED_CURRENT_STATUS: CREATED
+                    NEXT_STATUS: APPROVED
+            Events:
+                ApproveAgreement:
+                    Type: HttpApi
+                    Properties:
+                        ApiId: !Ref PaymentsHttpApi
+                        Path: /agreements/{agreementId}/approve
+                        Method: post
+        Metadata:
+            BuildMethod: esbuild
+            BuildProperties:
+                Minify: true
+                Target: 'es2020'
+                Sourcemap: true
+                External:
+                    - '@payments-example/lambda-utils'
+                EntryPoints:
+                    - app.ts
+    FundAgreementFunction:
+        Type: AWS::Serverless::Function
+        Properties:
+            CodeUri: transition-agreement/
+            Handler: app.lambdaHandler
+            Runtime: nodejs24.x
+            Architectures:
+                - x86_64
+            Layers:
+                - !Ref SharedLayer
+            Environment:
+                Variables:
+                    DATABASE_URL: !Ref DatabaseUrl
+                    ENABLE_MANUAL_SETTLEMENT_TRIGGER: 'false'
+                    TRANSITION_EVENT_TYPE: AgreementFunded
+                    EXPECTED_CURRENT_STATUS: APPROVED
+                    NEXT_STATUS: FUNDED
+            Events:
+                FundAgreement:
+                    Type: HttpApi
+                    Properties:
+                        ApiId: !Ref PaymentsHttpApi
+                        Path: /agreements/{agreementId}/fund
+                        Method: post
+        Metadata:
+            BuildMethod: esbuild
+            BuildProperties:
+                Minify: true
+                Target: 'es2020'
+                Sourcemap: true
+                External:
+                    - '@payments-example/lambda-utils'
+                EntryPoints:
+                    - app.ts
+    SettleAgreementFunction:
+        Type: AWS::Serverless::Function
+        Properties:
+            CodeUri: transition-agreement/
+            Handler: app.lambdaHandler
+            Runtime: nodejs24.x
+            Architectures:
+                - x86_64
+            Layers:
+                - !Ref SharedLayer
+            Environment:
+                Variables:
+                    DATABASE_URL: !Ref DatabaseUrl
+                    ENABLE_DEV_FAILURE_SIMULATION: 'false'
+                    ENABLE_MANUAL_SETTLEMENT_TRIGGER: 'false'
+                    TRANSITION_EVENT_TYPE: AgreementSettled
+                    EXPECTED_CURRENT_STATUS: FUNDED
+                    NEXT_STATUS: SETTLED
+            Events:
+                SettleAgreement:
+                    Type: HttpApi
+                    Properties:
+                        ApiId: !Ref PaymentsHttpApi
+                        Path: /agreements/{agreementId}/settle
+                        Method: post
+        Metadata:
+            BuildMethod: esbuild
+            BuildProperties:
+                Minify: true
+                Target: 'es2020'
+                Sourcemap: true
+                External:
+                    - '@payments-example/lambda-utils'
+                EntryPoints:
+                    - app.ts
+    SettlementQueue:
+        Type: AWS::SQS::Queue
+        Properties:
+            QueueName: settlement-queue
+            VisibilityTimeout: 30
+            RedrivePolicy:
+                deadLetterTargetArn: !GetAtt SettlementDeadLetterQueue.Arn
+                maxReceiveCount: 3
+
+    SettlementDeadLetterQueue:
+        Type: AWS::SQS::Queue
+        Properties:
+            QueueName: settlement-dlq
+
+    FundedEventRule:
+        Type: AWS::Events::Rule
+        Properties:
+            EventBusName: !Ref EventBusName
+            EventPattern:
+                source:
+                    - payments-example.agreements
+                detail-type:
+                    - AgreementFunded
+            State: ENABLED
+            Targets:
+                - Arn: !GetAtt SettlementQueue.Arn
+                  Id: SettlementQueueTarget
+
+    SettlementQueueSqsPolicy:
+        Type: AWS::SQS::QueuePolicy
+        Properties:
+            Queues:
+                - !Ref SettlementQueue
+            PolicyDocument:
+                Version: '2012-10-17'
+                Statement:
+                    - Effect: Allow
+                      Principal:
+                          Service: events.amazonaws.com
+                      Action: sqs:SendMessage
+                      Resource: !GetAtt SettlementQueue.Arn
+
+    SettlementProcessorFunction:
+        Type: AWS::Serverless::Function
+        Properties:
+            CodeUri: transition-agreement/
+            Handler: settlement-handler.lambdaHandler
+            Runtime: nodejs24.x
+            Architectures:
+                - x86_64
+            Environment:
+                Variables:
+                    DATABASE_URL: !Ref DatabaseUrl
+                    ENABLE_DEV_FAILURE_SIMULATION: 'false'
+            Events:
+                SettlementQueueTrigger:
+                    Type: SQS
+                    Properties:
+                        Queue: !GetAtt SettlementQueue.Arn
+                        BatchSize: 10
+        Metadata:
+            BuildMethod: esbuild
+            BuildProperties:
+                Minify: true
+                Target: 'es2020'
+                Sourcemap: true
+                External:
+                    - '@payments-example/lambda-utils'
+                EntryPoints:
+                    - settlement-handler.ts
+    OutboxDispatcherFunction:
+        Type: AWS::Serverless::Function
+        Properties:
+            CodeUri: transition-agreement/
+            Handler: outbox-dispatcher.lambdaHandler
+            Runtime: nodejs24.x
+            Architectures:
+                - x86_64
+            Environment:
+                Variables:
+                    DATABASE_URL: !Ref DatabaseUrl
+                    EVENT_PUBLISHER_MODE: !Ref EventPublisherMode
+                    EVENT_BUS_NAME: !Ref EventBusName
+                    OUTBOX_DISPATCH_BATCH_SIZE: '20'
+            Policies:
+                - Statement:
+                      - Effect: Allow
+                        Action:
+                            - events:PutEvents
+                        Resource: !Sub arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:event-bus/${EventBusName}
+            Events:
+                OutboxDispatchSchedule:
+                    Type: Schedule
+                    Properties:
+                        Schedule: rate(1 minute)
+        Metadata:
+            BuildMethod: esbuild
+            BuildProperties:
+                Minify: true
+                Target: 'es2020'
+                Sourcemap: true
+                External:
+                    - '@payments-example/lambda-utils'
+                EntryPoints:
+                    - outbox-dispatcher.ts
+
+Outputs:
+    PaymentsHttpApiUrl:
+        Description: 'Base URL for the payments HTTP API'
+        Value: !Sub 'https://${PaymentsHttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod'
+    CreateAgreementApi:
+        Description: 'API Gateway endpoint URL for Prod stage for Create Agreement function'
+        Value: !Sub 'https://${PaymentsHttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/agreements'
+    CreateAgreementFunction:
+        Description: 'Create Agreement Lambda Function ARN'
+        Value: !GetAtt CreateAgreementFunction.Arn
+    CreateAgreementFunctionIamRole:
+        Description: 'Implicit IAM Role created for Create Agreement function'
+        Value: !GetAtt CreateAgreementFunctionRole.Arn
+    DebugEventsApi:
+        Description: 'API Gateway endpoint URL for Prod stage for Debug Events function'
+        Value: !Sub 'https://${PaymentsHttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/debug/events'
+    DebugEventsFunction:
+        Description: 'Debug Events Lambda Function ARN'
+        Value: !GetAtt DebugEventsFunction.Arn
+    DebugEventsFunctionIamRole:
+        Description: 'Implicit IAM Role created for Debug Events function'
+        Value: !GetAtt DebugEventsFunctionRole.Arn
+    ListAgreementsApi:
+        Description: 'API Gateway endpoint URL for Prod stage for List Agreements function'
+        Value: !Sub 'https://${PaymentsHttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/agreements'
+    ListAgreementsFunction:
+        Description: 'List Agreements Lambda Function ARN'
+        Value: !GetAtt ListAgreementsFunction.Arn
+    ListAgreementsFunctionIamRole:
+        Description: 'Implicit IAM Role created for List Agreements function'
+        Value: !GetAtt ListAgreementsFunctionRole.Arn
+    ListLedgerApi:
+        Description: 'API Gateway endpoint URL for Prod stage for List Ledger function'
+        Value: !Sub 'https://${PaymentsHttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/ledger'
+    ListLedgerFunction:
+        Description: 'List Ledger Lambda Function ARN'
+        Value: !GetAtt ListLedgerFunction.Arn
+    ListLedgerFunctionIamRole:
+        Description: 'Implicit IAM Role created for List Ledger function'
+        Value: !GetAtt ListLedgerFunctionRole.Arn
+    SettlementProcessorFunction:
+        Description: 'Settlement Processor Lambda Function ARN'
+        Value: !GetAtt SettlementProcessorFunction.Arn
+    SharedLayerArn:
+        Description: 'Shared Lambda layer ARN'
+        Value: !Ref SharedLayer
+    SettlementProcessorFunctionIamRole:
+        Description: 'Implicit IAM Role created for Settlement Processor function'
+        Value: !GetAtt SettlementProcessorFunctionRole.Arn
+    SettlementQueue:
+        Description: 'Settlement queue ARN'
+        Value: !GetAtt SettlementQueue.Arn
+    SettlementDeadLetterQueue:
+        Description: 'Settlement dead-letter queue ARN'
+        Value: !GetAtt SettlementDeadLetterQueue.Arn
+    SettlementQueueUrl:
+        Description: 'Settlement queue URL'
+        Value: !Ref SettlementQueue
+    FundedEventRuleArn:
+        Description: 'EventBridge rule for AgreementFunded -> SQS'
+        Value: !GetAtt FundedEventRule.Arn
+    OutboxDispatcherFunction:
+        Description: 'Outbox Dispatcher Lambda Function ARN'
+        Value: !GetAtt OutboxDispatcherFunction.Arn
+    OutboxDispatcherFunctionIamRole:
+        Description: 'Implicit IAM Role created for Outbox Dispatcher function'
+        Value: !GetAtt OutboxDispatcherFunctionRole.Arn

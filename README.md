@@ -1,0 +1,173 @@
+# serverless-state-machine
+
+Serverless agreement and settlement workflow built with AWS SAM, Lambda, API Gateway, PostgreSQL, Supabase Auth, and a Vite UI.
+
+## What it does
+
+- Creates agreements between a merchant and a partner
+- Enforces the state machine: `CREATED -> APPROVED -> FUNDED -> SETTLED`
+- Persists audit history in `agreement_events`
+- Persists settlement bookings in `ledger_entries`
+- Persists domain events to `outbox_events` and dispatches them asynchronously
+- Uses idempotency keys to make command retries safe
+- Shares JWT auth and RBAC helpers through a dedicated Lambda layer
+- Exposes a local UI for workflow execution, Supabase-backed sign-in, events, and ledger visibility
+- Includes a `SettlementProcessorFunction` that consumes settlement work from SQS-shaped input
+
+## Main components
+
+- `create-agreement/`
+    - `POST /agreements`
+- `transition-agreement/`
+    - `POST /agreements/{agreementId}/approve`
+    - `POST /agreements/{agreementId}/fund`
+    - `POST /agreements/{agreementId}/settle`
+    - `SettlementProcessorFunction` for SQS/EventBridge-driven settlement execution
+    - `OutboxDispatcherFunction` for durable event delivery
+- `list-agreements/`
+    - `GET /agreements`
+- `debug-events/`
+    - `GET /debug/events`
+- `list-ledger/`
+    - `GET /ledger`
+- `ui/`
+    - Vite/React frontend for role-scoped workflow operation
+- `db/migrations/`
+    - schema for agreements, audit history, idempotency, and ledger
+- `layers/lambda-utils/`
+    - shared auth helpers and HTTP utilities mounted into API Lambdas as a Lambda layer
+
+## Local setup
+
+Prerequisites:
+
+- Docker
+- Node.js
+- SAM CLI
+
+Run migrations:
+
+```bash
+npm run migrate:up
+```
+
+Start the local API:
+
+```bash
+cp samconfig.example.toml samconfig.toml
+# edit samconfig.toml and replace DatabaseUrl before continuing
+sam build
+sam local start-api --env-vars .env.json --skip-pull-image
+```
+
+`samconfig.toml` is intentionally local-only. The repo ships `samconfig.example.toml` as the template for deploy and local SAM settings.
+
+Start the UI:
+
+```bash
+cd ui
+npm run dev
+```
+
+## Auth
+
+- The frontend signs in with Supabase Auth and sends `Authorization: Bearer <access_token>`
+- API Gateway HTTP API validates the JWT before invoking Lambda
+- Lambdas map trusted claims into `AuthContext`
+- The HTTP-facing Lambdas consume a shared `lambda-utils` layer instead of duplicating JWT parsing logic per function
+- Required claims:
+    - `sub`
+    - `app_role`
+- Conditional claims:
+    - `merchant_id`
+    - `partner_id`
+
+The local UI uses the same Supabase-backed login flow as the deployed app. Configure:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+- `VITE_API_BASE_URL`
+- `DATABASE_URL` in `.env` / `.env.json`
+
+## Local database
+
+Local development uses a Supabase Postgres `DATABASE_URL`.
+
+## Settlement execution modes
+
+- Local/manual mode can keep `POST /agreements/{id}/settle` enabled via `ENABLE_MANUAL_SETTLEMENT_TRIGGER=true`
+- `SettlementProcessor` and `SettlementProcessorFunction` execute the settlement path used by the `EventBridge -> SQS -> Lambda` flow
+- Domain events are written to `outbox_events` inside the same database transaction and dispatched asynchronously by `OutboxDispatcherFunction`
+- A local SQS-shaped fixture is available at `events/settlement-sqs-event.json`
+
+Invoke the async-ready settlement handler locally:
+
+```bash
+sam local invoke SettlementProcessorFunction --env-vars .env.json --event events/settlement-sqs-event.json
+```
+
+Dispatch pending outbox events locally:
+
+```bash
+sam local invoke OutboxDispatcherFunction --env-vars .env.json
+```
+
+Run the async retry smoke script with Supabase credentials:
+
+```bash
+SUPABASE_URL=...
+SUPABASE_ANON_KEY=...
+MERCHANT_PASSWORD=...
+PARTNER_PASSWORD=...
+ADMIN_PASSWORD=...
+node scripts/smoke-async-retry.mjs
+```
+
+## Testing
+
+Run all Lambda tests (compile + unit) from the project root:
+
+```bash
+npm test
+```
+
+Run all tests with coverage:
+
+```bash
+npm run test:coverage
+```
+
+Per-package tests (also available from the root):
+
+```bash
+cd create-agreement && npm test
+cd transition-agreement && npm test
+cd list-agreements && npm test
+cd debug-events && npm test
+cd list-ledger && npm test
+```
+
+UI build:
+
+```bash
+cd ui && npm run build
+```
+
+## Available commands
+
+| Command                     | Description                               |
+| --------------------------- | ----------------------------------------- |
+| `npm test`                  | Run all Lambda package tests              |
+| `npm run test:coverage`     | Run all Lambda tests with coverage        |
+| `npm run typecheck`         | Type-check all Lambda packages and the UI |
+| `npm run lint`              | Lint all Lambda packages and the UI       |
+| `npm run format`            | Format all files with Prettier            |
+| `npm run format:check`      | Check formatting without writing          |
+| `npm run build:layer`       | Compile the shared Lambda layer           |
+| `npm run migrate:up`        | Apply pending database migrations         |
+| `npm run migrate:down`      | Roll back the last migration              |
+| `npm run migrate:create`    | Scaffold a new migration file             |
+| `npm run smoke:async-retry` | Run the end-to-end async retry smoke test |
+| `cd ui && npm run dev`      | Start the Vite dev server                 |
+| `cd ui && npm run build`    | Build the UI for production               |
+| `cd ui && npm run preview`  | Preview the production build locally      |

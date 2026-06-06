@@ -1,0 +1,58 @@
+# OS / editor noise
+.DS_Store
+Thumbs.db
+Desktop.ini
+*~
+
+# Node dependencies
+node_modules/
+**/node_modules/
+!layers/
+!layers/lambda-utils/
+!layers/lambda-utils/nodejs/
+!layers/lambda-utils/nodejs/node_modules/
+!layers/lambda-utils/nodejs/node_modules/@payments-example/
+!layers/lambda-utils/nodejs/node_modules/@payments-example/lambda-utils/
+!layers/lambda-utils/nodejs/node_modules/@payments-example/lambda-utils/**
+
+# Test / coverage output
+coverage/
+**/coverage/
+.nyc_output/
+
+# Build artifacts
+dist/
+**/dist/
+build/
+*.tsbuildinfo
+
+# SAM / serverless build output
+.aws-sam/
+.serverless/
+
+# Logs and runtime artifacts
+logs/
+*.log
+*.pid
+*.pid.lock
+
+# Local environment files
+.env
+.env.local
+.env.test
+.env.production
+ui/.env
+.env.json
+samconfig.toml
+
+# Smoke test temp files
+.smoke-tmp/
+
+# Local caches
+.cache/
+.parcel-cache/
+.eslintcache
+
+# Temporary directories
+tmp/
+temp/

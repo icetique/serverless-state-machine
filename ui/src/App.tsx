@@ -10,7 +10,10 @@ import { useAgreementCommands } from './workflow/useAgreementCommands';
 import { useWorkflowData } from './workflow/useWorkflowData';
 
 export default function App() {
-    const apiBaseUrl = useMemo(() => import.meta.env.VITE_API_BASE_URL ?? '/api', []);
+    const apiBaseUrl = useMemo(() => {
+        const configured = import.meta.env.VITE_API_BASE_URL?.trim();
+        return configured ? configured : '/api';
+    }, []);
     const isManualSettlementTriggerEnabled = useMemo(
         () => (import.meta.env.VITE_ENABLE_MANUAL_SETTLEMENT_TRIGGER ?? 'false') === 'true',
         [],

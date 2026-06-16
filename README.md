@@ -57,8 +57,14 @@ Start the local API:
 cp samconfig.example.toml samconfig.toml
 # edit samconfig.toml and replace DatabaseUrl before continuing
 sam build
-sam local start-api --env-vars .env.json --skip-pull-image
+sam local start-api --env-vars .env.json --skip-pull-image --disable-authorizer
 ```
+
+`--disable-authorizer` is required because SAM local does not support API Gateway HTTP API JWT
+authorizers. The deployed API validates JWTs at the edge via `SupabaseJwtAuthorizer` in the OpenAPI
+`DefinitionBody`; locally, the shared `lambda-utils` layer parses the `Authorization: Bearer`
+header instead when `AWS_SAM_LOCAL` is set (SAM sets this automatically). Sign in through the UI as
+usual — auth still works, it just happens inside Lambda rather than at API Gateway.
 
 `samconfig.toml` is intentionally local-only. The repo ships `samconfig.example.toml` as the template for deploy and local SAM settings.
 
@@ -69,10 +75,17 @@ cd ui
 npm run dev
 ```
 
+For local UI, leave `VITE_API_BASE_URL` unset in `ui/.env` (the app uses `/api`; Vite proxies that
+to `http://127.0.0.1:3000`). Do not point the browser directly at SAM — cross-origin CORS preflight
+fails with the OpenAPI `DefinitionBody` template. Restart `npm run dev` after changing `vite.config.ts`.
+
 ## Auth
 
 - The frontend signs in with Supabase Auth and sends `Authorization: Bearer <access_token>`
-- API Gateway HTTP API validates the JWT before invoking Lambda
+- **Deployed:** API Gateway HTTP API validates the JWT before invoking Lambda (`SupabaseJwtAuthorizer`)
+- **Local (`sam local start-api`):** use `--disable-authorizer`; Lambdas parse the bearer token in the
+  shared layer when `AWS_SAM_LOCAL` is set (signature verification is skipped locally — acceptable
+  for dev because you control the token source via Supabase sign-in)
 - Lambdas map trusted claims into `AuthContext`
 - The HTTP-facing Lambdas consume a shared `lambda-utils` layer instead of duplicating JWT parsing logic per function
 - Required claims:
@@ -86,7 +99,7 @@ The local UI uses the same Supabase-backed login flow as the deployed app. Confi
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
-- `VITE_API_BASE_URL`
+- `VITE_API_BASE_URL` — **production only** (API Gateway URL on Vercel); omit locally
 - `DATABASE_URL` in `.env` / `.env.json`
 
 ## Local database

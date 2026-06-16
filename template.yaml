@@ -24,11 +24,22 @@ Parameters:
     FrontendOrigin:
         Type: String
         Default: http://localhost:5173
+    LogRetentionInDays:
+        Type: Number
+        Default: 30
+    OpsAlertsEmailEndpoint:
+        Type: String
+        Default: ops@example.com
 
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
     Function:
         Timeout: 10
+        # ReservedConcurrentExecutions is intentionally omitted for demo deploys.
+        # It reserves capacity from the account-wide Lambda concurrency pool; this
+        # account's limit is 10 in eu-central-1, so per-function reservations
+        # (summing to ~31) would fail deploy. Re-enable per function in production
+        # once the account quota is raised and load patterns are known.
 
 Resources:
     SharedLayer:
@@ -39,6 +50,16 @@ Resources:
             ContentUri: layers/lambda-utils/
             CompatibleRuntimes:
                 - nodejs24.x
+    OpsAlertsTopic:
+        Type: AWS::SNS::Topic
+        Properties:
+            TopicName: OpsAlertsTopic
+    OpsAlertsEmailSubscription:
+        Type: AWS::SNS::Subscription
+        Properties:
+            TopicArn: !Ref OpsAlertsTopic
+            Protocol: email
+            Endpoint: !Ref OpsAlertsEmailEndpoint
     # NOTE: Using explicit DefinitionBody instead of SAM shorthand (Auth + CorsConfiguration +
     # event-driven route generation) to work around a known SAM bug where
     # AWS::Serverless::HttpApi with Auth.DefaultAuthorizer silently fails to
@@ -151,6 +172,9 @@ Resources:
             Runtime: nodejs24.x
             Architectures:
                 - x86_64
+            # ReservedConcurrentExecutions: 3
+            LoggingConfig:
+                LogGroup: !Sub '/payments-example/${AWS::StackName}/create-agreement'
             Layers:
                 - !Ref SharedLayer
             Environment:
@@ -182,6 +206,9 @@ Resources:
             Runtime: nodejs24.x
             Architectures:
                 - x86_64
+            # ReservedConcurrentExecutions: 5
+            LoggingConfig:
+                LogGroup: !Sub '/payments-example/${AWS::StackName}/debug-events'
             Layers:
                 - !Ref SharedLayer
             Environment:
@@ -212,6 +239,9 @@ Resources:
             Runtime: nodejs24.x
             Architectures:
                 - x86_64
+            # ReservedConcurrentExecutions: 5
+            LoggingConfig:
+                LogGroup: !Sub '/payments-example/${AWS::StackName}/list-agreements'
             Layers:
                 - !Ref SharedLayer
             Environment:
@@ -242,6 +272,9 @@ Resources:
             Runtime: nodejs24.x
             Architectures:
                 - x86_64
+            # ReservedConcurrentExecutions: 5
+            LoggingConfig:
+                LogGroup: !Sub '/payments-example/${AWS::StackName}/list-ledger'
             Layers:
                 - !Ref SharedLayer
             Environment:
@@ -272,6 +305,9 @@ Resources:
             Runtime: nodejs24.x
             Architectures:
                 - x86_64
+            # ReservedConcurrentExecutions: 3
+            LoggingConfig:
+                LogGroup: !Sub '/payments-example/${AWS::StackName}/approve-agreement'
             Layers:
                 - !Ref SharedLayer
             Environment:
@@ -306,6 +342,9 @@ Resources:
             Runtime: nodejs24.x
             Architectures:
                 - x86_64
+            # ReservedConcurrentExecutions: 3
+            LoggingConfig:
+                LogGroup: !Sub '/payments-example/${AWS::StackName}/fund-agreement'
             Layers:
                 - !Ref SharedLayer
             Environment:
@@ -340,6 +379,9 @@ Resources:
             Runtime: nodejs24.x
             Architectures:
                 - x86_64
+            # ReservedConcurrentExecutions: 3
+            LoggingConfig:
+                LogGroup: !Sub '/payments-example/${AWS::StackName}/settle-agreement'
             Layers:
                 - !Ref SharedLayer
             Environment:
@@ -377,6 +419,8 @@ Resources:
                 maxReceiveCount: 3
 
     SettlementDeadLetterQueue:
+        DeletionPolicy: Retain
+        UpdateReplacePolicy: Retain
         Type: AWS::SQS::Queue
         Properties:
             QueueName: settlement-dlq
@@ -417,6 +461,9 @@ Resources:
             Runtime: nodejs24.x
             Architectures:
                 - x86_64
+            # ReservedConcurrentExecutions: 2
+            LoggingConfig:
+                LogGroup: !Sub '/payments-example/${AWS::StackName}/settlement-processor'
             Layers:
                 - !Ref SharedLayer
             Environment:
@@ -429,6 +476,8 @@ Resources:
                     Properties:
                         Queue: !GetAtt SettlementQueue.Arn
                         BatchSize: 10
+                        FunctionResponseTypes:
+                            - ReportBatchItemFailures
         Metadata:
             BuildMethod: esbuild
             BuildProperties:
@@ -447,6 +496,9 @@ Resources:
             Runtime: nodejs24.x
             Architectures:
                 - x86_64
+            # ReservedConcurrentExecutions: 2
+            LoggingConfig:
+                LogGroup: !Sub '/payments-example/${AWS::StackName}/outbox-dispatcher'
             Layers:
                 - !Ref SharedLayer
             Environment:
@@ -476,6 +528,264 @@ Resources:
                     - '@payments-example/lambda-utils'
                 EntryPoints:
                     - outbox-dispatcher.ts
+
+    CreateAgreementFunctionLogGroup:
+        Type: AWS::Logs::LogGroup
+        Properties:
+            LogGroupName: !Sub '/payments-example/${AWS::StackName}/create-agreement'
+            RetentionInDays: !Ref LogRetentionInDays
+    DebugEventsFunctionLogGroup:
+        Type: AWS::Logs::LogGroup
+        Properties:
+            LogGroupName: !Sub '/payments-example/${AWS::StackName}/debug-events'
+            RetentionInDays: !Ref LogRetentionInDays
+    ListAgreementsFunctionLogGroup:
+        Type: AWS::Logs::LogGroup
+        Properties:
+            LogGroupName: !Sub '/payments-example/${AWS::StackName}/list-agreements'
+            RetentionInDays: !Ref LogRetentionInDays
+    ListLedgerFunctionLogGroup:
+        Type: AWS::Logs::LogGroup
+        Properties:
+            LogGroupName: !Sub '/payments-example/${AWS::StackName}/list-ledger'
+            RetentionInDays: !Ref LogRetentionInDays
+    ApproveAgreementFunctionLogGroup:
+        Type: AWS::Logs::LogGroup
+        Properties:
+            LogGroupName: !Sub '/payments-example/${AWS::StackName}/approve-agreement'
+            RetentionInDays: !Ref LogRetentionInDays
+    FundAgreementFunctionLogGroup:
+        Type: AWS::Logs::LogGroup
+        Properties:
+            LogGroupName: !Sub '/payments-example/${AWS::StackName}/fund-agreement'
+            RetentionInDays: !Ref LogRetentionInDays
+    SettleAgreementFunctionLogGroup:
+        Type: AWS::Logs::LogGroup
+        Properties:
+            LogGroupName: !Sub '/payments-example/${AWS::StackName}/settle-agreement'
+            RetentionInDays: !Ref LogRetentionInDays
+    SettlementProcessorFunctionLogGroup:
+        Type: AWS::Logs::LogGroup
+        Properties:
+            LogGroupName: !Sub '/payments-example/${AWS::StackName}/settlement-processor'
+            RetentionInDays: !Ref LogRetentionInDays
+    OutboxDispatcherFunctionLogGroup:
+        Type: AWS::Logs::LogGroup
+        Properties:
+            LogGroupName: !Sub '/payments-example/${AWS::StackName}/outbox-dispatcher'
+            RetentionInDays: !Ref LogRetentionInDays
+
+    SettlementDeadLetterQueueAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+            AlarmName: !Sub '${AWS::StackName}-SettlementDeadLetterQueue-VisibleMessages'
+            AlarmDescription: Settlement DLQ has visible messages
+            Namespace: AWS/SQS
+            MetricName: ApproximateNumberOfMessagesVisible
+            Dimensions:
+                - Name: QueueName
+                  Value: settlement-dlq
+            Statistic: Maximum
+            Period: 300
+            EvaluationPeriods: 1
+            DatapointsToAlarm: 1
+            Threshold: 1
+            ComparisonOperator: GreaterThanOrEqualToThreshold
+            TreatMissingData: notBreaching
+            AlarmActions:
+                - !Ref OpsAlertsTopic
+    PaymentsHttpApi5xxAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+            AlarmName: !Sub '${AWS::StackName}-PaymentsHttpApi-5XX'
+            AlarmDescription: HTTP API is returning 5XX responses
+            Namespace: AWS/ApiGateway
+            MetricName: 5XXError
+            Dimensions:
+                - Name: ApiId
+                  Value: !Ref PaymentsHttpApi
+                - Name: Stage
+                  Value: Prod
+            Statistic: Sum
+            Period: 300
+            EvaluationPeriods: 1
+            DatapointsToAlarm: 1
+            Threshold: 1
+            ComparisonOperator: GreaterThanOrEqualToThreshold
+            TreatMissingData: notBreaching
+            AlarmActions:
+                - !Ref OpsAlertsTopic
+    CreateAgreementFunctionErrorsAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+            AlarmName: !Sub '${AWS::StackName}-CreateAgreementFunction-Errors'
+            AlarmDescription: CreateAgreementFunction reported Lambda errors
+            Namespace: AWS/Lambda
+            MetricName: Errors
+            Dimensions:
+                - Name: FunctionName
+                  Value: !Ref CreateAgreementFunction
+            Statistic: Sum
+            Period: 300
+            EvaluationPeriods: 1
+            DatapointsToAlarm: 1
+            Threshold: 1
+            ComparisonOperator: GreaterThanOrEqualToThreshold
+            TreatMissingData: notBreaching
+            AlarmActions:
+                - !Ref OpsAlertsTopic
+    DebugEventsFunctionErrorsAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+            AlarmName: !Sub '${AWS::StackName}-DebugEventsFunction-Errors'
+            AlarmDescription: DebugEventsFunction reported Lambda errors
+            Namespace: AWS/Lambda
+            MetricName: Errors
+            Dimensions:
+                - Name: FunctionName
+                  Value: !Ref DebugEventsFunction
+            Statistic: Sum
+            Period: 300
+            EvaluationPeriods: 1
+            DatapointsToAlarm: 1
+            Threshold: 1
+            ComparisonOperator: GreaterThanOrEqualToThreshold
+            TreatMissingData: notBreaching
+            AlarmActions:
+                - !Ref OpsAlertsTopic
+    ListAgreementsFunctionErrorsAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+            AlarmName: !Sub '${AWS::StackName}-ListAgreementsFunction-Errors'
+            AlarmDescription: ListAgreementsFunction reported Lambda errors
+            Namespace: AWS/Lambda
+            MetricName: Errors
+            Dimensions:
+                - Name: FunctionName
+                  Value: !Ref ListAgreementsFunction
+            Statistic: Sum
+            Period: 300
+            EvaluationPeriods: 1
+            DatapointsToAlarm: 1
+            Threshold: 1
+            ComparisonOperator: GreaterThanOrEqualToThreshold
+            TreatMissingData: notBreaching
+            AlarmActions:
+                - !Ref OpsAlertsTopic
+    ListLedgerFunctionErrorsAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+            AlarmName: !Sub '${AWS::StackName}-ListLedgerFunction-Errors'
+            AlarmDescription: ListLedgerFunction reported Lambda errors
+            Namespace: AWS/Lambda
+            MetricName: Errors
+            Dimensions:
+                - Name: FunctionName
+                  Value: !Ref ListLedgerFunction
+            Statistic: Sum
+            Period: 300
+            EvaluationPeriods: 1
+            DatapointsToAlarm: 1
+            Threshold: 1
+            ComparisonOperator: GreaterThanOrEqualToThreshold
+            TreatMissingData: notBreaching
+            AlarmActions:
+                - !Ref OpsAlertsTopic
+    ApproveAgreementFunctionErrorsAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+            AlarmName: !Sub '${AWS::StackName}-ApproveAgreementFunction-Errors'
+            AlarmDescription: ApproveAgreementFunction reported Lambda errors
+            Namespace: AWS/Lambda
+            MetricName: Errors
+            Dimensions:
+                - Name: FunctionName
+                  Value: !Ref ApproveAgreementFunction
+            Statistic: Sum
+            Period: 300
+            EvaluationPeriods: 1
+            DatapointsToAlarm: 1
+            Threshold: 1
+            ComparisonOperator: GreaterThanOrEqualToThreshold
+            TreatMissingData: notBreaching
+            AlarmActions:
+                - !Ref OpsAlertsTopic
+    FundAgreementFunctionErrorsAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+            AlarmName: !Sub '${AWS::StackName}-FundAgreementFunction-Errors'
+            AlarmDescription: FundAgreementFunction reported Lambda errors
+            Namespace: AWS/Lambda
+            MetricName: Errors
+            Dimensions:
+                - Name: FunctionName
+                  Value: !Ref FundAgreementFunction
+            Statistic: Sum
+            Period: 300
+            EvaluationPeriods: 1
+            DatapointsToAlarm: 1
+            Threshold: 1
+            ComparisonOperator: GreaterThanOrEqualToThreshold
+            TreatMissingData: notBreaching
+            AlarmActions:
+                - !Ref OpsAlertsTopic
+    SettleAgreementFunctionErrorsAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+            AlarmName: !Sub '${AWS::StackName}-SettleAgreementFunction-Errors'
+            AlarmDescription: SettleAgreementFunction reported Lambda errors
+            Namespace: AWS/Lambda
+            MetricName: Errors
+            Dimensions:
+                - Name: FunctionName
+                  Value: !Ref SettleAgreementFunction
+            Statistic: Sum
+            Period: 300
+            EvaluationPeriods: 1
+            DatapointsToAlarm: 1
+            Threshold: 1
+            ComparisonOperator: GreaterThanOrEqualToThreshold
+            TreatMissingData: notBreaching
+            AlarmActions:
+                - !Ref OpsAlertsTopic
+    SettlementProcessorFunctionErrorsAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+            AlarmName: !Sub '${AWS::StackName}-SettlementProcessorFunction-Errors'
+            AlarmDescription: SettlementProcessorFunction reported Lambda errors
+            Namespace: AWS/Lambda
+            MetricName: Errors
+            Dimensions:
+                - Name: FunctionName
+                  Value: !Ref SettlementProcessorFunction
+            Statistic: Sum
+            Period: 300
+            EvaluationPeriods: 1
+            DatapointsToAlarm: 1
+            Threshold: 1
+            ComparisonOperator: GreaterThanOrEqualToThreshold
+            TreatMissingData: notBreaching
+            AlarmActions:
+                - !Ref OpsAlertsTopic
+    OutboxDispatcherFunctionErrorsAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+            AlarmName: !Sub '${AWS::StackName}-OutboxDispatcherFunction-Errors'
+            AlarmDescription: OutboxDispatcherFunction reported Lambda errors
+            Namespace: AWS/Lambda
+            MetricName: Errors
+            Dimensions:
+                - Name: FunctionName
+                  Value: !Ref OutboxDispatcherFunction
+            Statistic: Sum
+            Period: 300
+            EvaluationPeriods: 1
+            DatapointsToAlarm: 1
+            Threshold: 1
+            ComparisonOperator: GreaterThanOrEqualToThreshold
+            TreatMissingData: notBreaching
+            AlarmActions:
+                - !Ref OpsAlertsTopic
 
 Outputs:
     PaymentsHttpApiUrl:

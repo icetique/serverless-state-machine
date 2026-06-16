@@ -5,7 +5,7 @@
  *
  * Prerequisites:
  *   1. Migrations are applied against Supabase (npm run migrate:up)
- *   2. Local API is running   (sam local start-api --env-vars .env.json --skip-pull-image)
+ *   2. Local API is running   (sam local start-api --env-vars .env.json --skip-pull-image --disable-authorizer)
  *   3. SAM is built           (sam build)
  *
  * What it does:

@@ -63,12 +63,10 @@ const defaults: ComponentProps<typeof WorkflowDashboard> = {
     form: { amount: '1000', merchantId: 'merchant_1', partnerId: 'partner_2' },
     idempotencyKey: 'create-key-1',
     identity: merchantIdentity,
-    isAdmin: false,
     isLoadingAgreements: false,
     isLoadingEvents: false,
     isLoadingLedger: false,
     isManualSettlementTriggerEnabled: true,
-    isMerchant: true,
     isSigningOut: false,
     isSubmitting: false,
     ledgerEntries: [],
@@ -91,7 +89,7 @@ describe('WorkflowDashboard', () => {
 
         expect(screen.getByRole('heading', { name: 'Create Agreement' })).toBeInTheDocument();
 
-        rerender(<WorkflowDashboard {...defaults} identity={adminIdentity} isAdmin={true} isMerchant={false} />);
+        rerender(<WorkflowDashboard {...defaults} identity={adminIdentity} />);
 
         expect(screen.queryByRole('heading', { name: 'Create Agreement' })).not.toBeInTheDocument();
     });
@@ -163,7 +161,6 @@ describe('WorkflowDashboard', () => {
             renderDashboard({
                 agreements: [createdAgreement],
                 identity: partnerIdentity,
-                isMerchant: false,
             });
 
             expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument();
@@ -173,7 +170,6 @@ describe('WorkflowDashboard', () => {
             renderDashboard({
                 agreements: [createdAgreement],
                 identity: partnerIdentity,
-                isMerchant: false,
             });
 
             // CREATED → partner can only Approve, not Fund or Settle
@@ -195,8 +191,6 @@ describe('WorkflowDashboard', () => {
         it('shows ledger and event stream panels for admin', () => {
             renderDashboard({
                 identity: adminIdentity,
-                isAdmin: true,
-                isMerchant: false,
             });
 
             expect(screen.getByRole('heading', { name: 'Ledger' })).toBeInTheDocument();
@@ -204,7 +198,7 @@ describe('WorkflowDashboard', () => {
         });
 
         it('hides ledger and event stream panels for non-admin', () => {
-            renderDashboard({ identity: partnerIdentity, isMerchant: false });
+            renderDashboard({ identity: partnerIdentity });
 
             expect(screen.queryByRole('heading', { name: 'Ledger' })).not.toBeInTheDocument();
             expect(screen.queryByRole('heading', { name: 'Event Stream' })).not.toBeInTheDocument();
@@ -213,8 +207,6 @@ describe('WorkflowDashboard', () => {
         it('shows loading states for admin panels while fetching', () => {
             renderDashboard({
                 identity: adminIdentity,
-                isAdmin: true,
-                isMerchant: false,
                 isLoadingLedger: true,
                 isLoadingEvents: true,
                 ledgerEntries: [],
@@ -228,8 +220,6 @@ describe('WorkflowDashboard', () => {
         it('shows ledger error and events error', () => {
             renderDashboard({
                 identity: adminIdentity,
-                isAdmin: true,
-                isMerchant: false,
                 ledgerError: 'Ledger query failed',
                 eventsError: 'Events query failed',
             });
@@ -241,8 +231,6 @@ describe('WorkflowDashboard', () => {
         it('shows empty states for admin panels when there is no data', () => {
             renderDashboard({
                 identity: adminIdentity,
-                isAdmin: true,
-                isMerchant: false,
                 isLoadingLedger: false,
                 isLoadingEvents: false,
                 ledgerEntries: [],

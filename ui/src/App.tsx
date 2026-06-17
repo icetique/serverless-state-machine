@@ -81,9 +81,6 @@ export default function App() {
         updateAgreementStatus,
     });
 
-    const isMerchant = identity?.role === 'merchant';
-    const isAdmin = identity?.role === 'admin';
-
     const handleSignOut = async () => {
         await signOut(() => {
             resetForSignOut();
@@ -161,12 +158,10 @@ export default function App() {
             form={form}
             idempotencyKey={idempotencyKey}
             identity={identity}
-            isAdmin={isAdmin}
             isLoadingAgreements={isLoadingAgreements}
             isLoadingEvents={isLoadingEvents}
             isLoadingLedger={isLoadingLedger}
             isManualSettlementTriggerEnabled={isManualSettlementTriggerEnabled}
-            isMerchant={isMerchant}
             isSigningOut={isSigningOut}
             isSubmitting={isSubmitting}
             ledgerEntries={ledgerEntries}

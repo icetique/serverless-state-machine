@@ -40,27 +40,29 @@ export function LoginPanel({
                     <h2>Supabase Auth</h2>
                     <span className="badge">JWT</span>
                 </div>
-                <div className="demo-accounts">
-                    <strong>Demo Accounts</strong>
-                    <div className="demo-account-list">
-                        {demoAccounts.map((account) => (
-                            <div className="demo-account-card" key={account.label}>
-                                <div className="demo-account-copy">
-                                    <span>{account.label}</span>
-                                    <code>{account.email}</code>
-                                    <code>{account.password}</code>
+                {demoAccounts.length > 0 ? (
+                    <div className="demo-accounts">
+                        <strong>Demo Accounts</strong>
+                        <div className="demo-account-list">
+                            {demoAccounts.map((account) => (
+                                <div className="demo-account-card" key={account.label}>
+                                    <div className="demo-account-copy">
+                                        <span>{account.label}</span>
+                                        <code>{account.email}</code>
+                                        <code>{account.password}</code>
+                                    </div>
+                                    <button
+                                        className="secondary-button demo-prefill-button"
+                                        onClick={() => onPrefillDemoAccount(account)}
+                                        type="button"
+                                    >
+                                        Prefill
+                                    </button>
                                 </div>
-                                <button
-                                    className="secondary-button demo-prefill-button"
-                                    onClick={() => onPrefillDemoAccount(account)}
-                                    type="button"
-                                >
-                                    Prefill
-                                </button>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
-                </div>
+                ) : null}
                 <form onSubmit={onSubmit}>
                     <label>
                         Email

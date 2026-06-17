@@ -77,93 +77,93 @@ Resources:
                     ThrottlingBurstLimit: 10
                     ThrottlingRateLimit: 5
             DefinitionBody:
-              openapi: '3.0.1'
-              info:
-                title: !Sub '${AWS::StackName}-api'
-                version: '1.0'
-              security:
-                - SupabaseJwtAuthorizer: []
-              paths:
-                /agreements:
-                  post:
-                    parameters:
-                      - name: Idempotency-Key
-                        in: header
-                        schema:
-                          type: string
-                          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-                        required: true
-                        description: Idempotency key for safe retries
-                    x-amazon-apigateway-integration:
-                      type: aws_proxy
-                      httpMethod: POST
-                      payloadFormatVersion: '2.0'
-                      uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CreateAgreementFunction.Arn}/invocations
-                  get:
-                    x-amazon-apigateway-integration:
-                      type: aws_proxy
-                      httpMethod: POST
-                      payloadFormatVersion: '2.0'
-                      uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ListAgreementsFunction.Arn}/invocations
-                /agreements/{agreementId}/approve:
-                  post:
-                    x-amazon-apigateway-integration:
-                      type: aws_proxy
-                      httpMethod: POST
-                      payloadFormatVersion: '2.0'
-                      uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ApproveAgreementFunction.Arn}/invocations
-                /agreements/{agreementId}/fund:
-                  post:
-                    x-amazon-apigateway-integration:
-                      type: aws_proxy
-                      httpMethod: POST
-                      payloadFormatVersion: '2.0'
-                      uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${FundAgreementFunction.Arn}/invocations
-                /agreements/{agreementId}/settle:
-                  post:
-                    x-amazon-apigateway-integration:
-                      type: aws_proxy
-                      httpMethod: POST
-                      payloadFormatVersion: '2.0'
-                      uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${SettleAgreementFunction.Arn}/invocations
-                /debug/events:
-                  get:
-                    x-amazon-apigateway-integration:
-                      type: aws_proxy
-                      httpMethod: POST
-                      payloadFormatVersion: '2.0'
-                      uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DebugEventsFunction.Arn}/invocations
-                /ledger:
-                  get:
-                    x-amazon-apigateway-integration:
-                      type: aws_proxy
-                      httpMethod: POST
-                      payloadFormatVersion: '2.0'
-                      uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ListLedgerFunction.Arn}/invocations
-              x-amazon-apigateway-cors:
-                allowOrigins:
-                  - !Ref FrontendOrigin
-                allowHeaders:
-                  - authorization
-                  - content-type
-                  - idempotency-key
-                  - x-debug-simulate-post-commit-crash
-                allowMethods:
-                  - GET
-                  - POST
-                  - OPTIONS
-                allowCredentials: false
-              components:
-                securitySchemes:
-                  SupabaseJwtAuthorizer:
-                    type: oauth2
-                    x-amazon-apigateway-authorizer:
-                      type: jwt
-                      identitySource: $request.header.Authorization
-                      jwtConfiguration:
-                        issuer: !Ref SupabaseIssuer
-                        audience:
-                          - !Ref SupabaseAudience
+                openapi: '3.0.1'
+                info:
+                    title: !Sub '${AWS::StackName}-api'
+                    version: '1.0'
+                security:
+                    - SupabaseJwtAuthorizer: []
+                paths:
+                    /agreements:
+                        post:
+                            parameters:
+                                - name: Idempotency-Key
+                                  in: header
+                                  schema:
+                                      type: string
+                                      pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+                                  required: true
+                                  description: Idempotency key for safe retries
+                            x-amazon-apigateway-integration:
+                                type: aws_proxy
+                                httpMethod: POST
+                                payloadFormatVersion: '2.0'
+                                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CreateAgreementFunction.Arn}/invocations
+                        get:
+                            x-amazon-apigateway-integration:
+                                type: aws_proxy
+                                httpMethod: POST
+                                payloadFormatVersion: '2.0'
+                                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ListAgreementsFunction.Arn}/invocations
+                    /agreements/{agreementId}/approve:
+                        post:
+                            x-amazon-apigateway-integration:
+                                type: aws_proxy
+                                httpMethod: POST
+                                payloadFormatVersion: '2.0'
+                                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ApproveAgreementFunction.Arn}/invocations
+                    /agreements/{agreementId}/fund:
+                        post:
+                            x-amazon-apigateway-integration:
+                                type: aws_proxy
+                                httpMethod: POST
+                                payloadFormatVersion: '2.0'
+                                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${FundAgreementFunction.Arn}/invocations
+                    /agreements/{agreementId}/settle:
+                        post:
+                            x-amazon-apigateway-integration:
+                                type: aws_proxy
+                                httpMethod: POST
+                                payloadFormatVersion: '2.0'
+                                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${SettleAgreementFunction.Arn}/invocations
+                    /debug/events:
+                        get:
+                            x-amazon-apigateway-integration:
+                                type: aws_proxy
+                                httpMethod: POST
+                                payloadFormatVersion: '2.0'
+                                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DebugEventsFunction.Arn}/invocations
+                    /ledger:
+                        get:
+                            x-amazon-apigateway-integration:
+                                type: aws_proxy
+                                httpMethod: POST
+                                payloadFormatVersion: '2.0'
+                                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ListLedgerFunction.Arn}/invocations
+                x-amazon-apigateway-cors:
+                    allowOrigins:
+                        - !Ref FrontendOrigin
+                    allowHeaders:
+                        - authorization
+                        - content-type
+                        - idempotency-key
+                        - x-debug-simulate-post-commit-crash
+                    allowMethods:
+                        - GET
+                        - POST
+                        - OPTIONS
+                    allowCredentials: false
+                components:
+                    securitySchemes:
+                        SupabaseJwtAuthorizer:
+                            type: oauth2
+                            x-amazon-apigateway-authorizer:
+                                type: jwt
+                                identitySource: $request.header.Authorization
+                                jwtConfiguration:
+                                    issuer: !Ref SupabaseIssuer
+                                    audience:
+                                        - !Ref SupabaseAudience
     CreateAgreementFunction:
         Type: AWS::Serverless::Function
         Properties:

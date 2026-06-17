@@ -108,7 +108,7 @@ Local development uses a Supabase Postgres `DATABASE_URL`.
 
 ## Settlement execution modes
 
-- Local/manual mode can keep `POST /agreements/{id}/settle` enabled via `ENABLE_MANUAL_SETTLEMENT_TRIGGER=true`
+- Manual `POST /agreements/{id}/settle` is disabled by default (local and deployed). Settlement runs via the async outbox → EventBridge → SQS path. Set `ENABLE_MANUAL_SETTLEMENT_TRIGGER=true` only if you need a synchronous settle shortcut for debugging.
 - `SettlementProcessor` and `SettlementProcessorFunction` execute the settlement path used by the `EventBridge -> SQS -> Lambda` flow
 - Domain events are written to `outbox_events` inside the same database transaction and dispatched asynchronously by `OutboxDispatcherFunction`
 - A local SQS-shaped fixture is available at `events/settlement-sqs-event.json`

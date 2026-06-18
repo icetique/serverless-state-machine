@@ -82,6 +82,8 @@ fails with the OpenAPI `DefinitionBody` template. Restart `npm run dev` after ch
 
 ## Auth
 
+See **[docs/supabase-setup.md](docs/supabase-setup.md)** for creating demo users, `raw_app_meta_data`, the `custom_access_token_hook` SQL, and JWT verification.
+
 - The frontend signs in with Supabase Auth and sends `Authorization: Bearer <access_token>`
 - **Deployed:** API Gateway HTTP API validates the JWT before invoking Lambda (`SupabaseJwtAuthorizer`)
 - **Local (`sam local start-api`):** use `--disable-authorizer`; Lambdas parse the bearer token in the

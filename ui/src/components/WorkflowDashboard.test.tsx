@@ -1,56 +1,15 @@
 import type { ComponentProps } from 'react';
 import { render, screen } from '@testing-library/react';
-import type { SessionIdentity } from '../../../shared/auth-contract';
 import { describe, expect, it } from 'vitest';
-import type { AgreementSummary, AgreementResult } from '../types';
+import {
+    adminIdentity,
+    createdAgreement,
+    fundedAgreement,
+    makeAgreementResult,
+    merchantIdentity,
+    partnerIdentity,
+} from '../test-support/fixtures';
 import { WorkflowDashboard } from './WorkflowDashboard';
-
-const merchantIdentity: SessionIdentity = {
-    email: 'merchant_1@example.com',
-    merchantId: 'merchant_1',
-    role: 'merchant',
-    subject: 'merchant-sub',
-};
-
-const partnerIdentity: SessionIdentity = {
-    email: 'partner_2@example.com',
-    partnerId: 'partner_2',
-    role: 'partner',
-    subject: 'partner-sub',
-};
-
-const adminIdentity: SessionIdentity = {
-    email: 'admin_1@example.com',
-    role: 'admin',
-    subject: 'admin-sub',
-};
-
-const fundedAgreement: AgreementSummary = {
-    agreementId: 'agr_1',
-    amount: 1000,
-    createdAt: '2026-06-06T00:00:00Z',
-    merchantId: 'merchant_1',
-    partnerId: 'partner_2',
-    status: 'FUNDED',
-};
-
-const createdAgreement: AgreementSummary = {
-    agreementId: 'agr_2',
-    amount: 500,
-    createdAt: '2026-06-06T00:00:00Z',
-    merchantId: 'merchant_1',
-    partnerId: 'partner_2',
-    status: 'CREATED',
-};
-
-const makeResult = (): AgreementResult => ({
-    agreementId: 'agr_new',
-    merchantId: 'merchant_1',
-    partnerId: 'partner_2',
-    amount: 1000,
-    status: 'CREATED',
-});
-
 const defaults: ComponentProps<typeof WorkflowDashboard> = {
     actionError: null,
     activeAction: null,
@@ -120,7 +79,7 @@ describe('WorkflowDashboard', () => {
     });
 
     it('shows the response JSON when a result is present', () => {
-        const result = makeResult();
+        const result = makeAgreementResult();
         renderDashboard({ result });
 
         expect(screen.getByText(/agr_new/)).toBeInTheDocument();

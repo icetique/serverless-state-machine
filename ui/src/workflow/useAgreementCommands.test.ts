@@ -1,30 +1,20 @@
+import type { FormEvent } from 'react';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { SessionIdentity } from '../../../shared/auth-contract';
-import type { AgreementSummary } from '../types';
+import {
+    approvedAgreement,
+    fundedAgreement,
+    makeAgreementResult,
+    makeMockWorkflowApi,
+    merchantIdentity,
+    partnerIdentity,
+} from '../test-support/fixtures';
 import { useAgreementCommands } from './useAgreementCommands';
-import { createWorkflowApi } from './workflowApi';
 
-const merchantIdentity: SessionIdentity = {
-    email: 'merchant_1@example.com',
-    merchantId: 'merchant_1',
-    role: 'merchant',
-    subject: 'merchant-sub',
-};
+const loadEvents = vi.fn(async () => []);
+const loadLedger = vi.fn(async () => []);
 
-const fundedAgreement: AgreementSummary = {
-    agreementId: 'agr_1',
-    amount: 1000,
-    createdAt: '2026-06-06T00:00:00Z',
-    merchantId: 'merchant_1',
-    partnerId: 'partner_2',
-    status: 'FUNDED',
-};
-
-const buildHeaders = () => ({});
-const api = createWorkflowApi({ apiBaseUrl: '/api', buildHeaders });
-
-describe('useAgreementCommands active-action timer', () => {
+describe('useAgreementCommands', () => {
     beforeEach(() => {
         vi.useFakeTimers();
     });
@@ -34,17 +24,182 @@ describe('useAgreementCommands active-action timer', () => {
         vi.restoreAllMocks();
     });
 
-    it('clears the reset timer on unmount before it fires', async () => {
-        const loadAgreements = vi.fn(async () => [fundedAgreement]);
-        const fetchMock = vi.fn().mockResolvedValue({
-            ok: true,
-            json: async () => ({
-                agreementId: fundedAgreement.agreementId,
-                newStatus: 'FUNDED',
+    it('creates agreement with idempotency key and rotates key on success', async () => {
+        const createResult = makeAgreementResult();
+        const createAgreement = vi.fn(async () => createResult);
+        const loadAgreements = vi.fn(async () => []);
+        const api = makeMockWorkflowApi({ createAgreement });
+
+        const { result } = renderHook(() =>
+            useAgreementCommands({
+                api,
+                identity: merchantIdentity,
+                isManualSettlementTriggerEnabled: true,
+                loadAgreements,
+                loadEvents,
+                loadLedger,
+                updateAgreementStatus: vi.fn(),
             }),
+        );
+
+        const initialKey = result.current.idempotencyKey;
+
+        await act(async () => {
+            await result.current.runCreateAgreement({
+                preventDefault: vi.fn(),
+            } as unknown as FormEvent<HTMLFormElement>);
         });
 
-        vi.stubGlobal('fetch', fetchMock);
+        expect(createAgreement).toHaveBeenCalledWith(
+            expect.objectContaining({
+                merchantId: 'merchant_1',
+                partnerId: 'partner_2',
+            }),
+            initialKey,
+        );
+        expect(result.current.idempotencyKey).not.toBe(initialKey);
+        expect(result.current.result).toEqual(createResult);
+    });
+
+    it('blocks create for non-merchant roles', async () => {
+        const createAgreement = vi.fn(async () => makeAgreementResult());
+        const api = makeMockWorkflowApi({ createAgreement });
+
+        const { result } = renderHook(() =>
+            useAgreementCommands({
+                api,
+                identity: partnerIdentity,
+                isManualSettlementTriggerEnabled: true,
+                loadAgreements: vi.fn(async () => []),
+                loadEvents,
+                loadLedger,
+                updateAgreementStatus: vi.fn(),
+            }),
+        );
+
+        await act(async () => {
+            await result.current.runCreateAgreement({
+                preventDefault: vi.fn(),
+            } as unknown as FormEvent<HTMLFormElement>);
+        });
+
+        expect(createAgreement).not.toHaveBeenCalled();
+        expect(result.current.error).toBeTruthy();
+    });
+
+    it('blocks fund transition for partner', async () => {
+        const transitionAgreement = vi.fn();
+        const api = makeMockWorkflowApi({ transitionAgreement });
+
+        const { result } = renderHook(() =>
+            useAgreementCommands({
+                api,
+                identity: partnerIdentity,
+                isManualSettlementTriggerEnabled: true,
+                loadAgreements: vi.fn(async () => [approvedAgreement]),
+                loadEvents,
+                loadLedger,
+                updateAgreementStatus: vi.fn(),
+            }),
+        );
+
+        await act(async () => {
+            await result.current.runTransition(approvedAgreement, 'fund');
+        });
+
+        expect(transitionAgreement).not.toHaveBeenCalled();
+        expect(result.current.actionError).toBeTruthy();
+    });
+
+    it('does not invoke transition when manual settle is disabled', async () => {
+        const transitionAgreement = vi.fn();
+        const api = makeMockWorkflowApi({ transitionAgreement });
+
+        const { result } = renderHook(() =>
+            useAgreementCommands({
+                api,
+                identity: merchantIdentity,
+                isManualSettlementTriggerEnabled: false,
+                loadAgreements: vi.fn(async () => [fundedAgreement]),
+                loadEvents,
+                loadLedger,
+                updateAgreementStatus: vi.fn(),
+            }),
+        );
+
+        await act(async () => {
+            await result.current.runTransition(fundedAgreement, 'settle');
+        });
+
+        expect(transitionAgreement).not.toHaveBeenCalled();
+        expect(result.current.actionError).toBeTruthy();
+    });
+
+    it('surfaces API failures on transition', async () => {
+        const transitionAgreement = vi.fn().mockRejectedValue(new Error('transition failed'));
+        const api = makeMockWorkflowApi({ transitionAgreement });
+
+        const { result } = renderHook(() =>
+            useAgreementCommands({
+                api,
+                identity: merchantIdentity,
+                isManualSettlementTriggerEnabled: true,
+                loadAgreements: vi.fn(async () => [fundedAgreement]),
+                loadEvents,
+                loadLedger,
+                updateAgreementStatus: vi.fn(),
+            }),
+        );
+
+        await act(async () => {
+            await result.current.runTransition(fundedAgreement, 'settle');
+        });
+
+        expect(result.current.actionError).toBe('transition failed');
+        expect(result.current.activeAction).toBeNull();
+    });
+
+    it('clears activeAction immediately when status changes', async () => {
+        const settled = { ...fundedAgreement, status: 'SETTLED' as const };
+        const transitionAgreement = vi.fn(async () => ({
+            agreementId: fundedAgreement.agreementId,
+            merchantId: fundedAgreement.merchantId,
+            partnerId: fundedAgreement.partnerId,
+            amount: fundedAgreement.amount,
+            newStatus: 'SETTLED',
+        }));
+        const loadAgreements = vi.fn(async () => [settled]);
+        const api = makeMockWorkflowApi({ transitionAgreement });
+
+        const { result } = renderHook(() =>
+            useAgreementCommands({
+                api,
+                identity: merchantIdentity,
+                isManualSettlementTriggerEnabled: true,
+                loadAgreements,
+                loadEvents,
+                loadLedger,
+                updateAgreementStatus: vi.fn(),
+            }),
+        );
+
+        await act(async () => {
+            await result.current.runTransition(fundedAgreement, 'settle');
+        });
+
+        expect(result.current.activeAction).toBeNull();
+    });
+
+    it('clears the reset timer on unmount before it fires', async () => {
+        const transitionAgreement = vi.fn(async () => ({
+            agreementId: fundedAgreement.agreementId,
+            merchantId: fundedAgreement.merchantId,
+            partnerId: fundedAgreement.partnerId,
+            amount: fundedAgreement.amount,
+            newStatus: 'FUNDED',
+        }));
+        const loadAgreements = vi.fn(async () => [fundedAgreement]);
+        const api = makeMockWorkflowApi({ transitionAgreement });
 
         const { result, unmount } = renderHook(() =>
             useAgreementCommands({
@@ -52,8 +207,8 @@ describe('useAgreementCommands active-action timer', () => {
                 identity: merchantIdentity,
                 isManualSettlementTriggerEnabled: true,
                 loadAgreements,
-                loadEvents: vi.fn(async () => []),
-                loadLedger: vi.fn(async () => []),
+                loadEvents,
+                loadLedger,
                 updateAgreementStatus: vi.fn(),
             }),
         );
@@ -72,16 +227,15 @@ describe('useAgreementCommands active-action timer', () => {
     });
 
     it('clears activeAction when resetForSignOut is called during the wait', async () => {
+        const transitionAgreement = vi.fn(async () => ({
+            agreementId: fundedAgreement.agreementId,
+            merchantId: fundedAgreement.merchantId,
+            partnerId: fundedAgreement.partnerId,
+            amount: fundedAgreement.amount,
+            newStatus: 'FUNDED',
+        }));
         const loadAgreements = vi.fn(async () => [fundedAgreement]);
-        const fetchMock = vi.fn().mockResolvedValue({
-            ok: true,
-            json: async () => ({
-                agreementId: fundedAgreement.agreementId,
-                newStatus: 'FUNDED',
-            }),
-        });
-
-        vi.stubGlobal('fetch', fetchMock);
+        const api = makeMockWorkflowApi({ transitionAgreement });
 
         const { result } = renderHook(() =>
             useAgreementCommands({
@@ -89,8 +243,8 @@ describe('useAgreementCommands active-action timer', () => {
                 identity: merchantIdentity,
                 isManualSettlementTriggerEnabled: true,
                 loadAgreements,
-                loadEvents: vi.fn(async () => []),
-                loadLedger: vi.fn(async () => []),
+                loadEvents,
+                loadLedger,
                 updateAgreementStatus: vi.fn(),
             }),
         );

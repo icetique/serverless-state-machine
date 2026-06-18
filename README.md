@@ -181,10 +181,26 @@ Run all Lambda tests (compile + unit) from the project root:
 npm test
 ```
 
-Run all tests with coverage:
+Run all tests with coverage (Lambda packages + UI):
 
 ```bash
 npm run test:coverage
+```
+
+UI unit tests (Vitest + Testing Library):
+
+```bash
+cd ui && npm test
+cd ui && npm run test:coverage
+cd ui && npm run typecheck:test
+```
+
+Optional browser smoke (requires local SAM + Vite + Supabase demo users — see [docs/supabase-setup.md](docs/supabase-setup.md)):
+
+```bash
+# Terminal 1: sam local start-api …
+# Terminal 2: cd ui && npm run dev
+cd ui && npm run test:e2e
 ```
 
 Per-package tests (also available from the root):
@@ -205,19 +221,20 @@ cd ui && npm run build
 
 ## Available commands
 
-| Command                     | Description                               |
-| --------------------------- | ----------------------------------------- |
-| `npm test`                  | Run all Lambda package tests              |
-| `npm run test:coverage`     | Run all Lambda tests with coverage        |
-| `npm run typecheck`         | Type-check all Lambda packages and the UI |
-| `npm run lint`              | Lint all Lambda packages and the UI       |
-| `npm run format`            | Format all files with Prettier            |
-| `npm run format:check`      | Check formatting without writing          |
-| `npm run build:layer`       | Compile the shared Lambda layer           |
-| `npm run migrate:up`        | Apply pending database migrations         |
-| `npm run migrate:down`      | Roll back the last migration              |
-| `npm run migrate:create`    | Scaffold a new migration file             |
-| `npm run smoke:async-retry` | Run the end-to-end async retry smoke test |
-| `cd ui && npm run dev`      | Start the Vite dev server                 |
-| `cd ui && npm run build`    | Build the UI for production               |
-| `cd ui && npm run preview`  | Preview the production build locally      |
+| Command                     | Description                                  |
+| --------------------------- | -------------------------------------------- |
+| `npm test`                  | Run all Lambda package and UI unit tests     |
+| `npm run test:coverage`     | Run Lambda + UI tests with coverage          |
+| `npm run test:e2e`          | Playwright smoke (manual; needs local stack) |
+| `npm run typecheck`         | Type-check all Lambda packages and the UI    |
+| `npm run lint`              | Lint all Lambda packages and the UI          |
+| `npm run format`            | Format all files with Prettier               |
+| `npm run format:check`      | Check formatting without writing             |
+| `npm run build:layer`       | Compile the shared Lambda layer              |
+| `npm run migrate:up`        | Apply pending database migrations            |
+| `npm run migrate:down`      | Roll back the last migration                 |
+| `npm run migrate:create`    | Scaffold a new migration file                |
+| `npm run smoke:async-retry` | Run the end-to-end async retry smoke test    |
+| `cd ui && npm run dev`      | Start the Vite dev server                    |
+| `cd ui && npm run build`    | Build the UI for production                  |
+| `cd ui && npm run preview`  | Preview the production build locally         |

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals
 import { createHandler } from '../../app';
 import { AgreementRepository, TransitionAgreementResult } from '../../src/repository';
 import { SettlementProcessor } from '../../src/settlement-processor';
-import { TEST_JWT_CLAIMS, createHttpApiEvent } from '../../../test-support/http-api';
+import { TEST_JWT_CLAIMS, asJwtHandlerEvent, createHttpApiEvent } from '../../../test-support/http-api';
 
 const createEvent = (
     agreementId?: string,
@@ -214,10 +214,12 @@ describe('Transition agreement handler', () => {
             config,
             settlementProcessor,
         )(
-            createHttpApiEvent({
-                pathParameters: { agreementId: 'agr_123' },
-                headers: { 'Idempotency-Key': 'idem_1' },
-            }),
+            asJwtHandlerEvent(
+                createHttpApiEvent({
+                    pathParameters: { agreementId: 'agr_123' },
+                    headers: { 'Idempotency-Key': 'idem_1' },
+                }),
+            ),
         );
 
         expect(result.statusCode).toBe(401);

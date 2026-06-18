@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { createHandler } from '../../app';
 import { AgreementsRepository } from '../../src/repository';
-import { TEST_JWT_CLAIMS, createHttpApiEvent } from '../../../test-support/http-api';
+import { TEST_JWT_CLAIMS, asJwtHandlerEvent, createHttpApiEvent } from '../../../test-support/http-api';
 
 const createEvent = (queryStringParameters?: Record<string, string>, claims = TEST_JWT_CLAIMS.admin) =>
     createHttpApiEvent({
@@ -91,7 +91,7 @@ describe('List agreements handler', () => {
     });
 
     it('returns 401 when the token is missing', async () => {
-        const result = await createHandler(repository)(createHttpApiEvent());
+        const result = await createHandler(repository)(asJwtHandlerEvent(createHttpApiEvent()));
         expect(result.statusCode).toBe(401);
     });
 });

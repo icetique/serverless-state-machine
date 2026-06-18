@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { createHandler } from '../../app';
 import { DebugEventsRepository } from '../../src/repository';
-import { TEST_JWT_CLAIMS, createHttpApiEvent } from '../../../test-support/http-api';
+import { TEST_JWT_CLAIMS, asJwtHandlerEvent, createHttpApiEvent } from '../../../test-support/http-api';
 
 const createEvent = (queryStringParameters?: Record<string, string>, claims = TEST_JWT_CLAIMS.admin) =>
     createHttpApiEvent({
@@ -90,7 +90,7 @@ describe('Debug events handler', () => {
 
     it('returns 401 when no auth context is available', async () => {
         const handler = createHandler(repository);
-        const result = await handler(createHttpApiEvent());
+        const result = await handler(asJwtHandlerEvent(createHttpApiEvent()));
 
         expect(result.statusCode).toBe(401);
         expect(parseBody(result.body)).toEqual({ message: 'JWT authorizer claims are required' });

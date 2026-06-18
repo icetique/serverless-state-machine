@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it } from '@jest/globals';
-import { TEST_JWT_CLAIMS, createHttpApiEvent, createUnsignedJwt } from '../../../test-support/http-api';
+import {
+    TEST_JWT_CLAIMS,
+    asAuthContextEvent,
+    createHttpApiEvent,
+    createUnsignedJwt,
+} from '../../../test-support/http-api';
 import { requireAuthContext } from '../../src/lambda-utils';
 
 describe('Supabase JWT auth', () => {
@@ -35,9 +40,11 @@ describe('Supabase JWT auth', () => {
 
         expect(
             requireAuthContext(
-                createHttpApiEvent({
-                    token: createUnsignedJwt(TEST_JWT_CLAIMS.merchant),
-                }),
+                asAuthContextEvent(
+                    createHttpApiEvent({
+                        token: createUnsignedJwt(TEST_JWT_CLAIMS.merchant),
+                    }),
+                ),
             ),
         ).toEqual({
             subject: 'supabase-user-merchant-1',
@@ -47,15 +54,19 @@ describe('Supabase JWT auth', () => {
     });
 
     it('throws when the authorization header is missing', () => {
-        expect(() => requireAuthContext(createHttpApiEvent())).toThrow('JWT authorizer claims are required');
+        expect(() => requireAuthContext(asAuthContextEvent(createHttpApiEvent()))).toThrow(
+            'JWT authorizer claims are required',
+        );
     });
 
     it('throws when authorizer claims are missing outside sam local', () => {
         expect(() =>
             requireAuthContext(
-                createHttpApiEvent({
-                    token: createUnsignedJwt(TEST_JWT_CLAIMS.merchant),
-                }),
+                asAuthContextEvent(
+                    createHttpApiEvent({
+                        token: createUnsignedJwt(TEST_JWT_CLAIMS.merchant),
+                    }),
+                ),
             ),
         ).toThrow('JWT authorizer claims are required');
     });
@@ -63,7 +74,7 @@ describe('Supabase JWT auth', () => {
     it('throws when the JWT payload is malformed', () => {
         process.env.AWS_SAM_LOCAL = 'true';
 
-        expect(() => requireAuthContext(createHttpApiEvent({ token: 'not-a-jwt' }))).toThrow(
+        expect(() => requireAuthContext(asAuthContextEvent(createHttpApiEvent({ token: 'not-a-jwt' })))).toThrow(
             'JWT bearer token format is invalid',
         );
     });

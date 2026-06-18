@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { createHandler } from '../../app';
 import { AgreementRepository, CreateAgreementResult } from '../../src/repository';
-import { TEST_JWT_CLAIMS, createHttpApiEvent, createUnsignedJwt } from '../../../test-support/http-api';
+import {
+    TEST_JWT_CLAIMS,
+    asJwtHandlerEvent,
+    createHttpApiEvent,
+    createUnsignedJwt,
+} from '../../../test-support/http-api';
 
 const createEvent = (body: string | null, idempotencyKey?: string, claims = TEST_JWT_CLAIMS.merchant) =>
     createHttpApiEvent({
@@ -194,11 +199,13 @@ describe('Create agreement handler', () => {
     it('returns 401 when the authorization token is missing', async () => {
         const handler = createHandler(repository);
         const result = await handler(
-            createHttpApiEvent({
-                body: JSON.stringify({ merchantId: 'merchant_1', partnerId: 'partner_2', amount: 1000 }),
-                headers: { 'Idempotency-Key': 'idem_1' },
-                requestId: 'req_123',
-            }),
+            asJwtHandlerEvent(
+                createHttpApiEvent({
+                    body: JSON.stringify({ merchantId: 'merchant_1', partnerId: 'partner_2', amount: 1000 }),
+                    headers: { 'Idempotency-Key': 'idem_1' },
+                    requestId: 'req_123',
+                }),
+            ),
         );
 
         expect(result.statusCode).toBe(401);
@@ -239,14 +246,16 @@ describe('Create agreement handler', () => {
 
         const handler = createHandler(repository);
         const result = await handler(
-            createHttpApiEvent({
-                body: JSON.stringify({ merchantId: 'merchant_1', partnerId: 'partner_2', amount: 1000 }),
-                headers: {
-                    'Idempotency-Key': 'idem_1',
-                    Authorization: `Bearer ${createUnsignedJwt(TEST_JWT_CLAIMS.merchant)}`,
-                },
-                requestId: 'req_123',
-            }),
+            asJwtHandlerEvent(
+                createHttpApiEvent({
+                    body: JSON.stringify({ merchantId: 'merchant_1', partnerId: 'partner_2', amount: 1000 }),
+                    headers: {
+                        'Idempotency-Key': 'idem_1',
+                        Authorization: `Bearer ${createUnsignedJwt(TEST_JWT_CLAIMS.merchant)}`,
+                    },
+                    requestId: 'req_123',
+                }),
+            ),
         );
 
         expect(result.statusCode).toBe(201);

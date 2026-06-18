@@ -241,6 +241,22 @@ export const createPool = (connectionString: string): Pool => {
     return new Pool(config);
 };
 
+export interface QueryResult<Row> {
+    rows: Row[];
+}
+
+export interface Queryable {
+    query<Row>(text: string, values: unknown[]): Promise<QueryResult<Row>>;
+}
+
+export interface TransactionalQueryable extends Queryable {
+    release(): void;
+}
+
+export interface TransactionPool {
+    connect(): Promise<TransactionalQueryable>;
+}
+
 export const getIdempotencyKey = (event: APIGatewayProxyEventV2WithJWTAuthorizer): string => {
     const headers = event.headers ?? {};
     const key = headers['Idempotency-Key'] ?? headers['idempotency-key'];

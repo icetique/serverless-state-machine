@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { PostgresOutboxRepository, type TransactionalQueryable } from '../../src/outbox/outbox-repository';
+import { PostgresOutboxRepository } from '../../src/outbox/outbox-repository';
+import { type TransactionalQueryable } from '../../src/lambda-utils';
 
 describe('PostgresOutboxRepository', () => {
     const queryMock = jest.fn();

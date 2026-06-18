@@ -53,7 +53,7 @@ Resources:
     OpsAlertsTopic:
         Type: AWS::SNS::Topic
         Properties:
-            TopicName: OpsAlertsTopic
+            TopicName: !Sub '${AWS::StackName}-OpsAlertsTopic'
     OpsAlertsEmailSubscription:
         Type: AWS::SNS::Subscription
         Properties:

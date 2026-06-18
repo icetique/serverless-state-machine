@@ -1,4 +1,4 @@
-import { AuthRole, AGREEMENT_EVENT_SOURCE } from './lambda-utils';
+import { AuthRole, AGREEMENT_EVENT_SOURCE, type TransactionPool } from './lambda-utils';
 
 export type AgreementStatus = 'CREATED' | 'APPROVED' | 'FUNDED' | 'SETTLED';
 export type ActorType = AuthRole;
@@ -34,22 +34,6 @@ interface AgreementRow {
     merchant_id: string;
     partner_id: string;
     amount: string;
-}
-
-interface QueryResult<Row> {
-    rows: Row[];
-}
-
-export interface Queryable {
-    query<Row>(text: string, values: unknown[]): Promise<QueryResult<Row>>;
-}
-
-export interface TransactionalQueryable extends Queryable {
-    release(): void;
-}
-
-export interface TransactionPool {
-    connect(): Promise<TransactionalQueryable>;
 }
 
 interface IdempotencyRow {

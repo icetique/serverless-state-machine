@@ -1,3 +1,5 @@
+import { type TransactionPool } from '../lambda-utils';
+
 export interface OutboxEventRecord {
     id: number;
     eventSource: string;
@@ -12,22 +14,6 @@ interface OutboxEventRow {
     event_type: string;
     payload: unknown;
     attempt_count: number;
-}
-
-interface QueryResult<Row> {
-    rows: Row[];
-}
-
-export interface Queryable {
-    query<Row>(text: string, values: unknown[]): Promise<QueryResult<Row>>;
-}
-
-export interface TransactionalQueryable extends Queryable {
-    release(): void;
-}
-
-export interface OutboxPool {
-    connect(): Promise<TransactionalQueryable>;
 }
 
 export interface OutboxRepository {
@@ -47,7 +33,7 @@ const mapOutboxEventRecord = (row: OutboxEventRow): OutboxEventRecord => ({
 });
 
 export class PostgresOutboxRepository implements OutboxRepository {
-    constructor(private readonly pool: OutboxPool) {}
+    constructor(private readonly pool: TransactionPool) {}
 
     async claimPendingEvents(limit: number): Promise<OutboxEventRecord[]> {
         const client = await this.pool.connect();

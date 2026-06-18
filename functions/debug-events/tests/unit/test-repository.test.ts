@@ -1,5 +1,6 @@
 import { describe, expect, it, jest } from '@jest/globals';
-import { PostgresDebugEventsRepository, Queryable } from '../../src/repository';
+import { PostgresDebugEventsRepository } from '../../src/repository';
+import { type Queryable } from '../../src/lambda-utils';
 
 describe('PostgresDebugEventsRepository', () => {
     it('maps debug event rows', async () => {

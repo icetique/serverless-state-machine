@@ -1,3 +1,5 @@
+import { type Queryable } from './lambda-utils';
+
 export interface LedgerEntry {
     transactionId: string;
     agreementId: string;
@@ -8,14 +10,6 @@ export interface LedgerEntry {
 
 export interface LedgerRepository {
     listEntries(limit: number): Promise<LedgerEntry[]>;
-}
-
-interface QueryResult<Row> {
-    rows: Row[];
-}
-
-export interface Queryable {
-    query<Row>(text: string, values: unknown[]): Promise<QueryResult<Row>>;
 }
 
 interface LedgerEntryRow {

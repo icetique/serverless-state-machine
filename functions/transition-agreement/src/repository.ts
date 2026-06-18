@@ -5,6 +5,7 @@ import {
     type AgreementEventType,
     type AgreementStatus,
     AuthRole,
+    type TransactionPool,
 } from './lambda-utils';
 
 export type ActorType = AuthRole | 'system';
@@ -62,22 +63,6 @@ interface IdempotencyRow {
     request_hash: string;
     response_status_code: number;
     response_body: string;
-}
-
-interface QueryResult<Row> {
-    rows: Row[];
-}
-
-export interface Queryable {
-    query<Row>(text: string, values: unknown[]): Promise<QueryResult<Row>>;
-}
-
-export interface TransactionalQueryable extends Queryable {
-    release(): void;
-}
-
-export interface TransactionPool {
-    connect(): Promise<TransactionalQueryable>;
 }
 
 export type TransitionAgreementResult =

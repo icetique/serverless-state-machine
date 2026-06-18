@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
-import { PostgresAgreementRepository, TransactionPool, TransactionalQueryable } from '../../src/repository';
+import { PostgresAgreementRepository } from '../../src/repository';
+import { type TransactionPool, type TransactionalQueryable } from '../../src/lambda-utils';
 import { createPool, getDatabaseUrl } from '@payments-example/lambda-utils';
 
 describe('getDatabaseUrl', () => {

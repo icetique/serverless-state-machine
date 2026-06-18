@@ -51,14 +51,14 @@ serverless-state-machine/
 
 This repo is a **working demo** of agreement workflow, outbox delivery, and async settlement — not a production product template. A few items are deliberately left as-is:
 
-| Area                 | Choice                                                   | Why                                                                                                                    |
-| -------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Area                 | Choice                                                   | Why                                                                                                                      |
+| -------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | **CI**               | No GitHub Actions                                        | Quality gate is manual: `npm test`, `npm run typecheck`, `npm run validate:template`, `sam build` before demo or deploy. |
-| **Monorepo tooling** | No npm workspaces                                        | Keeps SAM `CodeUri` paths and per-Lambda packages straightforward; root scripts chain `cd` into each package.          |
-| **IaC routing**      | OpenAPI `DefinitionBody` plus explicit `Events: HttpApi` | SAM bug workaround so JWT authorizer routes deploy correctly — see comment block in `template.yaml`.                   |
-| **Outbox dispatch**  | At-least-once to EventBridge                             | Publish and `markPublished` cannot share a Postgres transaction with `PutEvents`; settlement is idempotent downstream. |
-| **Auth types**       | `shared/` (UI) vs `layers/lambda-utils` (Lambda)         | Same domain `AuthContext`, duplicated because the layer cannot import UI compile-time packages at runtime.             |
-| **UI polish**        | Global CSS; limited a11y                                 | Cohesive demo UI; not targeting WCAG compliance or design-system scoping.                                              |
+| **Monorepo tooling** | No npm workspaces                                        | Keeps SAM `CodeUri` paths and per-Lambda packages straightforward; root scripts chain `cd` into each package.            |
+| **IaC routing**      | OpenAPI `DefinitionBody` plus explicit `Events: HttpApi` | SAM bug workaround so JWT authorizer routes deploy correctly — see comment block in `template.yaml`.                     |
+| **Outbox dispatch**  | At-least-once to EventBridge                             | Publish and `markPublished` cannot share a Postgres transaction with `PutEvents`; settlement is idempotent downstream.   |
+| **Auth types**       | `shared/` (UI) vs `layers/lambda-utils` (Lambda)         | Same domain `AuthContext`, duplicated because the layer cannot import UI compile-time packages at runtime.               |
+| **UI polish**        | Global CSS; limited a11y                                 | Cohesive demo UI; not targeting WCAG compliance or design-system scoping.                                                |
 
 If you are reviewing for production hardening, the highest-value next steps would be CI, workspace tooling, and accessibility — none of which block the current workflow demo.
 
@@ -270,21 +270,21 @@ cd apps/ui && npm run build
 
 ## Available commands
 
-| Command                         | Description                                  |
-| ------------------------------- | -------------------------------------------- |
-| `npm test`                      | Run all Lambda package and UI unit tests     |
-| `npm run test:coverage`         | Run Lambda + UI tests with coverage          |
-| `npm run test:e2e`              | Playwright smoke (manual; needs local stack) |
-| `npm run typecheck`             | Type-check all Lambda packages and the UI    |
-| `npm run lint`                  | Lint all Lambda packages and the UI          |
+| Command                         | Description                                                                                   |
+| ------------------------------- | --------------------------------------------------------------------------------------------- |
+| `npm test`                      | Run all Lambda package and UI unit tests                                                      |
+| `npm run test:coverage`         | Run Lambda + UI tests with coverage                                                           |
+| `npm run test:e2e`              | Playwright smoke (manual; needs local stack)                                                  |
+| `npm run typecheck`             | Type-check all Lambda packages and the UI                                                     |
+| `npm run lint`                  | Lint all Lambda packages and the UI                                                           |
 | `npm run validate:template`     | Lint `template.yaml` via `sam validate --lint` (uses bundled cfn-lint; see `.cfnlintrc.yaml`) |
-| `npm run format`                | Format all files with Prettier               |
-| `npm run format:check`          | Check formatting without writing             |
-| `npm run build:layer`           | Compile the shared Lambda layer              |
-| `npm run migrate:up`            | Apply pending database migrations            |
-| `npm run migrate:down`          | Roll back the last migration                 |
-| `npm run migrate:create`        | Scaffold a new migration file                |
-| `npm run smoke:async-retry`     | Run the end-to-end async retry smoke test    |
-| `cd apps/ui && npm run dev`     | Start the Vite dev server                    |
-| `cd apps/ui && npm run build`   | Build the UI for production                  |
-| `cd apps/ui && npm run preview` | Preview the production build locally         |
+| `npm run format`                | Format all files with Prettier                                                                |
+| `npm run format:check`          | Check formatting without writing                                                              |
+| `npm run build:layer`           | Compile the shared Lambda layer                                                               |
+| `npm run migrate:up`            | Apply pending database migrations                                                             |
+| `npm run migrate:down`          | Roll back the last migration                                                                  |
+| `npm run migrate:create`        | Scaffold a new migration file                                                                 |
+| `npm run smoke:async-retry`     | Run the end-to-end async retry smoke test                                                     |
+| `cd apps/ui && npm run dev`     | Start the Vite dev server                                                                     |
+| `cd apps/ui && npm run build`   | Build the UI for production                                                                   |
+| `cd apps/ui && npm run preview` | Preview the production build locally                                                          |

@@ -1,5 +1,6 @@
 import { describe, expect, it, jest } from '@jest/globals';
-import { PostgresAgreementRepository, TransactionPool, TransactionalQueryable } from '../../src/repository';
+import { PostgresAgreementRepository } from '../../src/repository';
+import { type TransactionPool, type TransactionalQueryable } from '../../src/lambda-utils';
 
 describe('PostgresAgreementRepository transition', () => {
     it('updates status and writes audit/idempotency rows', async () => {

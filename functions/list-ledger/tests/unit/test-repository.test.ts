@@ -1,5 +1,6 @@
 import { describe, expect, it, jest } from '@jest/globals';
-import { PostgresLedgerRepository, Queryable } from '../../src/repository';
+import { PostgresLedgerRepository } from '../../src/repository';
+import { type Queryable } from '../../src/lambda-utils';
 
 describe('PostgresLedgerRepository', () => {
     it('maps ledger rows', async () => {

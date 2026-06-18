@@ -23,10 +23,13 @@ import { writeFileSync, unlinkSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
 import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+
+const PROJECT_DIR = fileURLToPath(new URL('..', import.meta.url));
+dotenv.config({ path: join(PROJECT_DIR, '.env') });
 
 const API_BASE = process.env.API_BASE ?? 'http://127.0.0.1:3000';
 const ENV_FILE = process.env.ENV_FILE ?? '.env.json';
-const PROJECT_DIR = fileURLToPath(new URL('..', import.meta.url));
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 const MERCHANT_EMAIL = process.env.MERCHANT_EMAIL ?? 'merchant_1@example.com';
@@ -90,6 +93,20 @@ const runSamInvoke = (functionName, fixturePath) => {
     console.log(`  Running: ${cmd}`);
     const output = execSync(cmd, { cwd: PROJECT_DIR, encoding: 'utf8', timeout: 30_000 });
     return output;
+};
+
+const parseSamInvokeJson = (output) => {
+    const lines = output.split('\n').filter((line) => line.trim() !== '');
+
+    for (let index = lines.length - 1; index >= 0; index -= 1) {
+        try {
+            return JSON.parse(lines[index]);
+        } catch {
+            continue;
+        }
+    }
+
+    return null;
 };
 
 // ─ main ───────────────────────────────────────────────────────────
@@ -246,8 +263,8 @@ async function main() {
     const crashOutput = runSamInvoke('SettlementProcessorFunction', crashFile);
     console.log(`  ${crashOutput.replace(/\n/g, '\n  ')}`);
 
-    const hasCrashFailures = crashOutput.includes('batchItemFailures');
-    if (hasCrashFailures) {
+    const crashResult = parseSamInvokeJson(crashOutput);
+    if (Array.isArray(crashResult?.batchItemFailures) && crashResult.batchItemFailures.length > 0) {
         ok('Crash simulation returned batchItemFailures (SQS retry expected)');
     } else {
         warn('Could not confirm batchItemFailures in output');
@@ -299,11 +316,13 @@ async function main() {
     const replayOutput = runSamInvoke('SettlementProcessorFunction', replayFile);
     console.log(`  ${replayOutput.replace(/\n/g, '\n  ')}`);
 
-    const hasReplayFailures = replayOutput.includes('"batchItemFailures":[]');
-    if (hasReplayFailures || !replayOutput.includes('batchItemFailures')) {
+    const replayResult = parseSamInvokeJson(replayOutput);
+    if (Array.isArray(replayResult?.batchItemFailures) && replayResult.batchItemFailures.length === 0) {
         ok('Replay returned no batchItemFailures (idempotency caught the duplicate)');
+    } else if (replayResult === null) {
+        warn('Could not parse replay invoke output');
     } else {
-        warn('Replay appears to have batchItemFailures — investigate');
+        warn(`Replay returned batchItemFailures: ${JSON.stringify(replayResult.batchItemFailures)}`);
     }
 
     // 11. Verify no duplicate ledger rows or events

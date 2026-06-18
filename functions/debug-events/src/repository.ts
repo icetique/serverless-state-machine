@@ -1,3 +1,5 @@
+import { type Queryable } from './lambda-utils';
+
 export interface DebugEventRecord {
     id: number;
     agreementId: string;
@@ -13,14 +15,6 @@ export interface DebugEventRecord {
 export interface DebugEventsQuery {
     limit: number;
     agreementId?: string;
-}
-
-interface QueryResult<Row> {
-    rows: Row[];
-}
-
-export interface Queryable {
-    query<Row>(text: string, values: unknown[]): Promise<QueryResult<Row>>;
 }
 
 interface DebugEventRow {

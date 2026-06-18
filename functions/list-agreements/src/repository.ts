@@ -1,4 +1,4 @@
-import { AuthRole } from './lambda-utils';
+import { AuthRole, type Queryable } from './lambda-utils';
 
 export type AgreementStatus = 'CREATED' | 'APPROVED' | 'FUNDED' | 'SETTLED';
 
@@ -20,14 +20,6 @@ export interface AgreementsQuery {
     role: AuthRole;
     merchantId?: string;
     partnerId?: string;
-}
-
-interface QueryResult<Row> {
-    rows: Row[];
-}
-
-export interface Queryable {
-    query<Row>(text: string, values: unknown[]): Promise<QueryResult<Row>>;
 }
 
 interface AgreementSummaryRow {

@@ -1,6 +1,14 @@
 import { APIGatewayProxyEventV2WithJWTAuthorizer, APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
-import { LedgerRepository, PostgresLedgerRepository, createPool, getDatabaseUrl } from './src/repository';
-import { asHttpErrorResponse, assertRole, jsonResponse, parseLimit, requireAuthContext } from './src/lambda-utils';
+import { LedgerRepository, PostgresLedgerRepository } from './src/repository';
+import {
+    asHttpErrorResponse,
+    assertRole,
+    createPool,
+    getDatabaseUrl,
+    jsonResponse,
+    parseLimit,
+    requireAuthContext,
+} from './src/lambda-utils';
 
 export const createHandler = (repository: LedgerRepository) => {
     return async (event: APIGatewayProxyEventV2WithJWTAuthorizer): Promise<APIGatewayProxyStructuredResultV2> => {

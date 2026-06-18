@@ -1,6 +1,6 @@
 import { ActorType } from './repository';
 import { SettlementProcessorInput } from './settlement-processor';
-import { AgreementEventDetail } from './events';
+import { AgreementEventDetail } from './lambda-utils';
 
 export interface SettlementQueueMessage {
     agreementId: string;

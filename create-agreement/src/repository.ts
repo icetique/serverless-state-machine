@@ -1,6 +1,4 @@
-import { Pool, type PoolConfig } from 'pg';
-import { AuthRole } from './lambda-utils';
-import { AGREEMENT_EVENT_SOURCE } from './events';
+import { AuthRole, AGREEMENT_EVENT_SOURCE } from './lambda-utils';
 
 export type AgreementStatus = 'CREATED' | 'APPROVED' | 'FUNDED' | 'SETTLED';
 export type ActorType = AuthRole;
@@ -76,25 +74,6 @@ export type CreateAgreementResult =
     | {
           kind: 'conflict';
       };
-
-export const getDatabaseUrl = (): string => {
-    const databaseUrl = process.env.DATABASE_URL;
-
-    if (!databaseUrl) {
-        throw new Error('DATABASE_URL is required');
-    }
-
-    return databaseUrl;
-};
-
-export const createPool = (connectionString: string): Pool => {
-    const config: PoolConfig = {
-        connectionString,
-        max: 1,
-    };
-
-    return new Pool(config);
-};
 
 export class PostgresAgreementRepository implements AgreementRepository {
     constructor(private readonly pool: TransactionPool) {}

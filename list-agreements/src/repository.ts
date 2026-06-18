@@ -1,4 +1,3 @@
-import { Pool, type PoolConfig } from 'pg';
 import { AuthRole } from './lambda-utils';
 
 export type AgreementStatus = 'CREATED' | 'APPROVED' | 'FUNDED' | 'SETTLED';
@@ -39,25 +38,6 @@ interface AgreementSummaryRow {
     amount: string;
     created_at: string;
 }
-
-export const getDatabaseUrl = (): string => {
-    const databaseUrl = process.env.DATABASE_URL;
-
-    if (!databaseUrl) {
-        throw new Error('DATABASE_URL is required');
-    }
-
-    return databaseUrl;
-};
-
-export const createPool = (connectionString: string): Pool => {
-    const config: PoolConfig = {
-        connectionString,
-        max: 1,
-    };
-
-    return new Pool(config);
-};
 
 export class PostgresAgreementsRepository implements AgreementsRepository {
     constructor(private readonly pool: Queryable) {}

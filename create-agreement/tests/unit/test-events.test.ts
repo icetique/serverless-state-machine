@@ -1,5 +1,9 @@
 import { describe, expect, it } from '@jest/globals';
-import { buildAgreementEvent, AGREEMENT_CREATED_DETAIL_TYPE, AGREEMENT_EVENT_SOURCE } from '../../src/events';
+import {
+    AGREEMENT_CREATED_DETAIL_TYPE,
+    AGREEMENT_EVENT_SOURCE,
+    buildAgreementEvent,
+} from '@payments-example/lambda-utils';
 
 describe('buildAgreementEvent', () => {
     it('builds an AgreementDomainEvent with the correct shape', () => {

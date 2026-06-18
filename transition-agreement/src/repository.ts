@@ -1,12 +1,11 @@
 import { randomUUID } from 'crypto';
-import { Pool, type PoolConfig } from 'pg';
 import {
     AGREEMENT_EVENT_SOURCE,
     type AgreementEventDetail,
     type AgreementEventType,
     type AgreementStatus,
-} from './events';
-import { AuthRole } from './lambda-utils';
+    AuthRole,
+} from './lambda-utils';
 
 export type ActorType = AuthRole | 'system';
 
@@ -103,25 +102,6 @@ export type TransitionAgreementResult =
           kind: 'invalid_transition';
           currentStatus: AgreementStatus;
       };
-
-export const getDatabaseUrl = (): string => {
-    const databaseUrl = process.env.DATABASE_URL;
-
-    if (!databaseUrl) {
-        throw new Error('DATABASE_URL is required');
-    }
-
-    return databaseUrl;
-};
-
-export const createPool = (connectionString: string): Pool => {
-    const config: PoolConfig = {
-        connectionString,
-        max: 1,
-    };
-
-    return new Pool(config);
-};
 
 export class PostgresAgreementRepository implements AgreementRepository {
     constructor(private readonly pool: TransactionPool) {}

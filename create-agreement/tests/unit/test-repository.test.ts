@@ -1,12 +1,6 @@
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
-import { Pool } from 'pg';
-import {
-    PostgresAgreementRepository,
-    TransactionPool,
-    TransactionalQueryable,
-    createPool,
-    getDatabaseUrl,
-} from '../../src/repository';
+import { PostgresAgreementRepository, TransactionPool, TransactionalQueryable } from '../../src/repository';
+import { createPool, getDatabaseUrl } from '@payments-example/lambda-utils';
 
 describe('getDatabaseUrl', () => {
     const prev = process.env.DATABASE_URL;
@@ -31,10 +25,10 @@ describe('getDatabaseUrl', () => {
 });
 
 describe('createPool', () => {
-    it('creates a Pool with the given connection string and max: 1', () => {
+    it('creates a pool with the given connection string', () => {
         const pool = createPool('postgres://test:test@localhost:5432/test');
-        expect(pool).toBeInstanceOf(Pool);
         expect(pool.totalCount).toBe(0);
+        expect(typeof pool.query).toBe('function');
         pool.end();
     });
 });

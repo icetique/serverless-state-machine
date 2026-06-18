@@ -1,5 +1,3 @@
-import { Pool, type PoolConfig } from 'pg';
-
 export interface LedgerEntry {
     transactionId: string;
     agreementId: string;
@@ -27,25 +25,6 @@ interface LedgerEntryRow {
     entry_type: string;
     created_at: string;
 }
-
-export const getDatabaseUrl = (): string => {
-    const databaseUrl = process.env.DATABASE_URL;
-
-    if (!databaseUrl) {
-        throw new Error('DATABASE_URL is required');
-    }
-
-    return databaseUrl;
-};
-
-export const createPool = (connectionString: string): Pool => {
-    const config: PoolConfig = {
-        connectionString,
-        max: 1,
-    };
-
-    return new Pool(config);
-};
 
 export class PostgresLedgerRepository implements LedgerRepository {
     constructor(private readonly pool: Queryable) {}

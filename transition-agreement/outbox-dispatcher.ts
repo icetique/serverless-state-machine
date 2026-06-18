@@ -8,7 +8,7 @@ import {
     getEventPublisherMode,
 } from './src/publisher';
 import { PostgresOutboxRepository, OutboxRepository } from './src/outbox-repository';
-import { createPool, getDatabaseUrl } from './src/repository';
+import { createPool, getDatabaseUrl } from './src/lambda-utils';
 
 const DEFAULT_BATCH_SIZE = 20;
 

@@ -1,5 +1,6 @@
 import { SQSEvent, SQSBatchResponse } from 'aws-lambda';
-import { PostgresAgreementRepository, createPool, getDatabaseUrl } from './src/repository';
+import { PostgresAgreementRepository } from './src/repository';
+import { createPool, getDatabaseUrl } from './src/lambda-utils';
 import { DefaultSettlementProcessor, SettlementProcessor } from './src/settlement-processor';
 import { parseSettlementQueueRecordBody } from './src/settlement-message';
 import { withSqsFailureSimulation } from './src/dev-failure-simulation';

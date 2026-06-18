@@ -1,20 +1,18 @@
 import { createHash } from 'crypto';
 import { APIGatewayProxyEventV2WithJWTAuthorizer, APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
-import { type AgreementEventType, type AgreementStatus } from './src/events';
-import {
-    AgreementRepository,
-    AgreementLookup,
-    PostgresAgreementRepository,
-    createPool,
-    getDatabaseUrl,
-} from './src/repository';
+import { AgreementRepository, AgreementLookup, PostgresAgreementRepository } from './src/repository';
 import {
     asHttpErrorResponse,
     assertMerchantOwnership,
     assertPartnerOwnership,
     assertRole,
+    createPool,
+    getDatabaseUrl,
+    getIdempotencyKey,
     jsonResponse,
     requireAuthContext,
+    type AgreementEventType,
+    type AgreementStatus,
     ValidationError,
 } from './src/lambda-utils';
 import { DefaultSettlementProcessor, SettlementProcessor } from './src/settlement-processor';
@@ -42,17 +40,6 @@ const getTransitionConfig = (): TransitionConfig => {
         expectedCurrentStatus,
         nextStatus,
     };
-};
-
-const getIdempotencyKey = (event: APIGatewayProxyEventV2WithJWTAuthorizer): string => {
-    const headers = event.headers ?? {};
-    const key = headers['Idempotency-Key'] ?? headers['idempotency-key'];
-
-    if (!key || key.trim() === '') {
-        throw new ValidationError('Idempotency-Key header is required');
-    }
-
-    return key;
 };
 
 const getAgreementId = (event: APIGatewayProxyEventV2WithJWTAuthorizer): string => {

@@ -1,10 +1,13 @@
 import { createHash, randomUUID } from 'crypto';
 import { APIGatewayProxyEventV2WithJWTAuthorizer, APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
-import { AgreementRepository, PostgresAgreementRepository, createPool, getDatabaseUrl } from './src/repository';
+import { AgreementRepository, PostgresAgreementRepository } from './src/repository';
 import {
     asHttpErrorResponse,
     assertMerchantOwnership,
     assertRole,
+    createPool,
+    getDatabaseUrl,
+    getIdempotencyKey,
     jsonResponse,
     requireAuthContext,
     ValidationError,
@@ -60,17 +63,6 @@ const parseBody = (event: APIGatewayProxyEventV2WithJWTAuthorizer): CreateAgreem
         partnerId,
         amount,
     };
-};
-
-const getIdempotencyKey = (event: APIGatewayProxyEventV2WithJWTAuthorizer): string => {
-    const headers = event.headers ?? {};
-    const key = headers['Idempotency-Key'] ?? headers['idempotency-key'];
-
-    if (!key || key.trim() === '') {
-        throw new ValidationError('Idempotency-Key header is required');
-    }
-
-    return key;
 };
 
 const hashCreateAgreementRequest = (request: CreateAgreementRequest): string =>

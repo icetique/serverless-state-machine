@@ -7,11 +7,12 @@ Desktop.ini
 # Node dependencies
 node_modules/
 **/node_modules/
-!layers/
-!layers/lambda-utils/
-!layers/lambda-utils/nodejs/
-!layers/lambda-utils/nodejs/node_modules/
+
+# Lambda layer: commit compiled @payments-example/lambda-utils only (not pg — built via npm run build:layer)
+layers/lambda-utils/node_modules/
+layers/lambda-utils/nodejs/node_modules/*
 !layers/lambda-utils/nodejs/node_modules/@payments-example/
+layers/lambda-utils/nodejs/node_modules/@payments-example/*
 !layers/lambda-utils/nodejs/node_modules/@payments-example/lambda-utils/
 !layers/lambda-utils/nodejs/node_modules/@payments-example/lambda-utils/**
 

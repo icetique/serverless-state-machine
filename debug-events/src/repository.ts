@@ -1,5 +1,3 @@
-import { Pool, type PoolConfig } from 'pg';
-
 export interface DebugEventRecord {
     id: number;
     agreementId: string;
@@ -40,25 +38,6 @@ interface DebugEventRow {
 export interface DebugEventsRepository {
     listEvents(query: DebugEventsQuery): Promise<DebugEventRecord[]>;
 }
-
-export const getDatabaseUrl = (): string => {
-    const databaseUrl = process.env.DATABASE_URL;
-
-    if (!databaseUrl) {
-        throw new Error('DATABASE_URL is required');
-    }
-
-    return databaseUrl;
-};
-
-export const createPool = (connectionString: string): Pool => {
-    const config: PoolConfig = {
-        connectionString,
-        max: 1,
-    };
-
-    return new Pool(config);
-};
 
 export class PostgresDebugEventsRepository implements DebugEventsRepository {
     constructor(private readonly pool: Queryable) {}

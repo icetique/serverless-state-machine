@@ -1,4 +1,5 @@
-import type { APIGatewayProxyResult } from 'aws-lambda';
+import type { APIGatewayProxyEventV2WithJWTAuthorizer, APIGatewayProxyResult } from 'aws-lambda';
+import { Pool, type PoolConfig } from 'pg';
 
 // Auth types — keep in sync with shared/auth-contract.ts
 export type AuthRole = 'merchant' | 'partner' | 'admin';
@@ -23,6 +24,30 @@ export type AgreementEventType =
     | typeof AGREEMENT_FUNDED_DETAIL_TYPE
     | typeof AGREEMENT_SETTLED_DETAIL_TYPE;
 export type AgreementStatus = 'CREATED' | 'APPROVED' | 'FUNDED' | 'SETTLED';
+
+export interface AgreementEventDetail {
+    agreementId: string;
+    merchantId: string;
+    partnerId: string;
+    amount: number;
+    previousStatus: AgreementStatus | null;
+    newStatus: AgreementStatus;
+}
+
+export interface AgreementDomainEvent {
+    source: string;
+    detailType: AgreementEventType;
+    detail: AgreementEventDetail;
+}
+
+export const buildAgreementEvent = (
+    detailType: AgreementEventType,
+    detail: AgreementEventDetail,
+): AgreementDomainEvent => ({
+    source: AGREEMENT_EVENT_SOURCE,
+    detailType,
+    detail,
+});
 
 export class AuthenticationError extends Error {}
 export class AuthorizationError extends Error {}
@@ -195,4 +220,34 @@ export const asHttpErrorResponse = (error: unknown): APIGatewayProxyResult | nul
     }
 
     return null;
+};
+
+export const getDatabaseUrl = (): string => {
+    const databaseUrl = process.env.DATABASE_URL;
+
+    if (!databaseUrl) {
+        throw new Error('DATABASE_URL is required');
+    }
+
+    return databaseUrl;
+};
+
+export const createPool = (connectionString: string): Pool => {
+    const config: PoolConfig = {
+        connectionString,
+        max: 1,
+    };
+
+    return new Pool(config);
+};
+
+export const getIdempotencyKey = (event: APIGatewayProxyEventV2WithJWTAuthorizer): string => {
+    const headers = event.headers ?? {};
+    const key = headers['Idempotency-Key'] ?? headers['idempotency-key'];
+
+    if (!key || key.trim() === '') {
+        throw new ValidationError('Idempotency-Key header is required');
+    }
+
+    return key;
 };

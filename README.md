@@ -9,6 +9,7 @@ Serverless agreement and settlement workflow built with AWS SAM, Lambda, API Gat
 - Persists audit history in `agreement_events`
 - Persists settlement bookings in `ledger_entries`
 - Persists domain events to `outbox_events` and dispatches them asynchronously
+- Settles funded agreements via **EventBridge → SQS → Lambda** (not synchronous HTTP)
 - Uses idempotency keys to make command retries safe
 - Shares JWT auth and RBAC helpers through a dedicated Lambda layer
 - Exposes a local UI for workflow execution, Supabase-backed sign-in, events, and ledger visibility
@@ -36,6 +37,37 @@ Serverless agreement and settlement workflow built with AWS SAM, Lambda, API Gat
     - schema for agreements, audit history, idempotency, and ledger
 - `layers/lambda-utils/`
     - shared auth helpers and HTTP utilities mounted into API Lambdas as a Lambda layer
+
+## Async settlement (SQS)
+
+After `POST /agreements/{id}/fund`, settlement is **not** done in the HTTP response. The default path is async:
+
+```text
+create / approve / fund (HTTP Lambda)
+        │
+        ▼
+  outbox_events + agreement row          (same Postgres transaction)
+        │
+        ▼
+  OutboxDispatcherFunction                 (scheduled; publishes pending rows)
+        │
+        ▼
+  EventBridge  (AgreementFunded)
+        │
+        ▼
+  settlement-queue (SQS)                 (DLQ: settlement-dlq after 3 receives)
+        │
+        ▼
+  SettlementProcessorFunction            (SQS trigger; FUNDED → SETTLED + ledger)
+```
+
+Infrastructure is defined in `template.yaml`: `SettlementQueue`, `FundedEventRule`, `SettlementProcessorFunction`, and `OutboxDispatcherFunction`.
+
+- **Deployed:** fund returns once the agreement is `FUNDED`; the UI polls until `SETTLED` (~outbox dispatch interval + SQS/Lambda latency).
+- **Local API (`sam local start-api`):** HTTP workflow works, but SQS is not wired automatically — use `sam local invoke OutboxDispatcherFunction` and `SettlementProcessorFunction` (or `npm run smoke:async-retry`) to exercise the async path.
+- **Manual settle:** `POST /agreements/{id}/settle` exists but is off by default (`ENABLE_MANUAL_SETTLEMENT_TRIGGER=false`).
+
+See [Settlement execution modes](#settlement-execution-modes) for invoke commands and the retry smoke script.
 
 ## Local setup
 
@@ -111,7 +143,9 @@ Local development uses a Supabase Postgres `DATABASE_URL`.
 
 ## Settlement execution modes
 
-- Manual `POST /agreements/{id}/settle` is disabled by default (local and deployed). Settlement runs via the async outbox → EventBridge → SQS path. Set `ENABLE_MANUAL_SETTLEMENT_TRIGGER=true` only if you need a synchronous settle shortcut for debugging.
+Commands and fixtures for the [async SQS path](#async-settlement-sqs) above:
+
+- Manual `POST /agreements/{id}/settle` is disabled by default (local and deployed). Settlement runs via outbox → EventBridge → SQS → `SettlementProcessorFunction`. Set `ENABLE_MANUAL_SETTLEMENT_TRIGGER=true` only if you need a synchronous settle shortcut for debugging.
 - `SettlementProcessor` and `SettlementProcessorFunction` execute the settlement path used by the `EventBridge -> SQS -> Lambda` flow
 - Domain events are written to `outbox_events` inside the same database transaction and dispatched asynchronously by `OutboxDispatcherFunction`
 - A local SQS-shaped fixture is available at `events/settlement-sqs-event.json`

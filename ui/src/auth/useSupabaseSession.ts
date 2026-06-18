@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Session, SupabaseClient } from '@supabase/supabase-js';
 import type { SessionIdentity } from '../../../shared/auth-contract';
-import { getSessionIdentity } from './sessionIdentity';
+import { formatSessionIdentityError, getSessionIdentityResult } from './sessionIdentity';
 
 type UseSupabaseSessionResult = {
     authError: string | null;
@@ -37,6 +37,28 @@ export const useSupabaseSession = (client: SupabaseClient | null): UseSupabaseSe
 
         let isMounted = true;
 
+        const applySession = (nextSession: Session | null): void => {
+            if (!nextSession) {
+                setSession(null);
+                setIdentity(null);
+                return;
+            }
+
+            const result = getSessionIdentityResult(nextSession);
+
+            if (result.ok) {
+                setSession(nextSession);
+                setIdentity(result.identity);
+                setAuthError(null);
+                return;
+            }
+
+            setSession(null);
+            setIdentity(null);
+            setAuthError(formatSessionIdentityError(result.reason));
+            void client.auth.signOut();
+        };
+
         void client.auth.getSession().then(({ data, error: sessionError }) => {
             if (!isMounted) {
                 return;
@@ -45,8 +67,7 @@ export const useSupabaseSession = (client: SupabaseClient | null): UseSupabaseSe
             if (sessionError) {
                 setAuthError(sessionError.message);
             } else {
-                setSession(data.session);
-                setIdentity(data.session ? getSessionIdentity(data.session) : null);
+                applySession(data.session);
             }
 
             setAuthReady(true);
@@ -55,8 +76,7 @@ export const useSupabaseSession = (client: SupabaseClient | null): UseSupabaseSe
         const {
             data: { subscription },
         } = client.auth.onAuthStateChange((_event, nextSession) => {
-            setSession(nextSession);
-            setIdentity(nextSession ? getSessionIdentity(nextSession) : null);
+            applySession(nextSession);
         });
 
         return () => {

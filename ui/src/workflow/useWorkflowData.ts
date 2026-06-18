@@ -191,19 +191,30 @@ export const useWorkflowData = ({
             return;
         }
 
+        let isMounted = true;
+
         const id = window.setInterval(() => {
             if (hasFundedRef.current && !isLoadingRef.current) {
                 isLoadingRef.current = true;
                 void loadAgreementsRef
                     .current()
-                    .catch(() => {})
+                    .catch((caughtError) => {
+                        if (isMounted) {
+                            setAgreementsError(
+                                caughtError instanceof Error ? caughtError.message : 'Unknown agreements failure',
+                            );
+                        }
+                    })
                     .finally(() => {
                         isLoadingRef.current = false;
                     });
             }
         }, 10_000);
 
-        return () => window.clearInterval(id);
+        return () => {
+            isMounted = false;
+            window.clearInterval(id);
+        };
         // One interval for the lifetime of the session — reads refs each tick
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sessionAccessToken]);

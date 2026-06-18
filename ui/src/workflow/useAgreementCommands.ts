@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { SessionIdentity } from '../../../shared/auth-contract';
 import { canViewAgreementAction } from '../workflow';
@@ -54,6 +54,20 @@ export const useAgreementCommands = ({
     const [actionKeys, setActionKeys] = useState<Record<string, string>>({});
     const [actionError, setActionError] = useState<string | null>(null);
     const [activeAction, setActiveAction] = useState<string | null>(null);
+    const activeActionResetTimerRef = useRef<number | null>(null);
+
+    const clearActiveActionResetTimer = useCallback(() => {
+        if (activeActionResetTimerRef.current !== null) {
+            window.clearTimeout(activeActionResetTimerRef.current);
+            activeActionResetTimerRef.current = null;
+        }
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            clearActiveActionResetTimer();
+        };
+    }, [clearActiveActionResetTimer]);
 
     const isMerchant = identity?.role === 'merchant';
 
@@ -69,6 +83,8 @@ export const useAgreementCommands = ({
     }, [identity?.merchantId, isMerchant]);
 
     const resetForSignOut = () => {
+        clearActiveActionResetTimer();
+        setActiveAction(null);
         setResult(null);
         setError(null);
         setActionError(null);
@@ -170,8 +186,13 @@ export const useAgreementCommands = ({
                 // Status hasn't changed yet (e.g. async settlement) —
                 // unblock the button after 15s; the auto-poll in
                 // useWorkflowData will refresh the list when it flips
-                setTimeout(() => setActiveAction(null), 15_000);
+                clearActiveActionResetTimer();
+                activeActionResetTimerRef.current = window.setTimeout(() => {
+                    activeActionResetTimerRef.current = null;
+                    setActiveAction(null);
+                }, 15_000);
             } else {
+                clearActiveActionResetTimer();
                 setActiveAction(null);
             }
 
@@ -179,6 +200,7 @@ export const useAgreementCommands = ({
                 await Promise.all([loadEvents(), loadLedger()]);
             }
         } catch (caughtError) {
+            clearActiveActionResetTimer();
             setActionError(caughtError instanceof Error ? caughtError.message : 'Unknown transition failure');
             setActiveAction(null);
         }

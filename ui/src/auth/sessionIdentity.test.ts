@@ -2,9 +2,11 @@ import type { Session } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 import { formatSessionIdentityError, getSessionIdentity, getSessionIdentityResult } from './sessionIdentity';
 
+const toBase64Url = (value: string): string => btoa(value).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+
 const createUnsignedJwt = (claims: Record<string, unknown>): string => {
-    const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url');
-    const payload = Buffer.from(JSON.stringify(claims)).toString('base64url');
+    const header = toBase64Url(JSON.stringify({ alg: 'none', typ: 'JWT' }));
+    const payload = toBase64Url(JSON.stringify(claims));
 
     return `${header}.${payload}.`;
 };

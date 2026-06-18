@@ -9,6 +9,7 @@
         "lint": "eslint 'src/**/*.{ts,tsx}' --quiet --fix",
         "preview": "vite preview",
         "typecheck": "tsc -b",
+        "typecheck:test": "tsc -b tsconfig.test.json",
         "test": "vitest run"
     },
     "dependencies": {

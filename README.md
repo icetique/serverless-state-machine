@@ -18,7 +18,7 @@ Serverless agreement and settlement workflow built with AWS SAM, Lambda, API Gat
 ## Repository layout
 
 ```text
-payments-example/
+serverless-state-machine/
 ├── apps/
 │   └── ui/                         # Vite/React frontend (role-scoped workflow UI)
 ├── functions/
@@ -46,6 +46,21 @@ payments-example/
 - **`shared/`** holds `AuthContext` and JWT wire types for the UI. Lambdas cannot import it at runtime; they use **`layers/lambda-utils`** instead (same domain types, duplicated on purpose for packaging).
 - **`tests/fixtures/http-api/`** is for Lambda unit tests (mock API Gateway events). **`apps/ui/src/test-support/`** is for React/Vitest fixtures — different jobs, different folders.
 - Root **`npm test`** / **`npm run typecheck`** orchestrate all packages via `cd` chains; there is no npm workspaces setup (each package has its own `package-lock.json`).
+
+## Scope and intentional tradeoffs
+
+This repo is a **working demo** of agreement workflow, outbox delivery, and async settlement — not a production product template. A few items are deliberately left as-is:
+
+| Area                 | Choice                                                   | Why                                                                                                                    |
+| -------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| **CI**               | No GitHub Actions                                        | Quality gate is manual: `npm test`, `npm run typecheck`, `sam build`, `sam validate` before demo or deploy.            |
+| **Monorepo tooling** | No npm workspaces                                        | Keeps SAM `CodeUri` paths and per-Lambda packages straightforward; root scripts chain `cd` into each package.          |
+| **IaC routing**      | OpenAPI `DefinitionBody` plus explicit `Events: HttpApi` | SAM bug workaround so JWT authorizer routes deploy correctly — see comment block in `template.yaml`.                   |
+| **Outbox dispatch**  | At-least-once to EventBridge                             | Publish and `markPublished` cannot share a Postgres transaction with `PutEvents`; settlement is idempotent downstream. |
+| **Auth types**       | `shared/` (UI) vs `layers/lambda-utils` (Lambda)         | Same domain `AuthContext`, duplicated because the layer cannot import UI compile-time packages at runtime.             |
+| **UI polish**        | Global CSS; limited a11y                                 | Cohesive demo UI; not targeting WCAG compliance or design-system scoping.                                              |
+
+If you are reviewing for production hardening, the highest-value next steps would be CI, workspace tooling, and accessibility — none of which block the current workflow demo.
 
 ## Main components
 
